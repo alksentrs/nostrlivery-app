@@ -44,12 +44,14 @@ npm pack
 ```bash
 # driver
 cd ../driver
-npm i --ignore-scripts ../common/odevlibertario-nostrlivery-common-*.tgz
+npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 
 # company
 cd ../company
-npm i --ignore-scripts ../common/odevlibertario-nostrlivery-common-*.tgz
+npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 ```
+
+**Note**: Use `--legacy-peer-deps` flag to resolve React version conflicts between the common package and apps.
 
 ## Backend Setup
 
@@ -151,10 +153,10 @@ npm run build
 npm pack
 
 cd ../driver
-npm i ../common/odevlibertario-nostrlivery-common-*.tgz
+npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 
 cd ../company
-npm i ../common/odevlibertario-nostrlivery-common-*.tgz
+npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 ```
 
 ## Linting
