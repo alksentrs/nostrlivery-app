@@ -96,6 +96,14 @@ node ./node_modules/expo/bin/cli start --clear
 - Press `a` for Android, `w` for web, or scan the QR with Expo Go.
 - **Note**: Ensure the backend server is running before starting the mobile apps.
 
+## Current Status ✅
+
+Both mobile apps are now working and properly configured:
+- **Driver App**: ✅ Working - connects to backend server at `192.168.1.199:3000`
+- **Company App**: ✅ Working - connects to backend server at `192.168.1.199:3000`
+- **Backend Server**: ✅ Running - API server on port 3000, Nostr relay on port 7000
+- **Dependencies**: ✅ Resolved - React 19 compatibility with `--legacy-peer-deps`
+
 ## SDK version alignment
 
 Both apps are currently configured for Expo SDK 53 (React Native 0.79, React 19). If you see an SDK mismatch in Expo Go:
@@ -121,6 +129,12 @@ node ./node_modules/expo/bin/cli install --fix
 - **Node selection screen shows empty float**:
   - This was fixed by auto-initializing the node URL and adding validation
   - Ensure the common package is rebuilt after changes
+
+### Dependency Resolution Issues:
+- **ERESOLVE dependency conflicts**:
+  - Always use `--legacy-peer-deps` when installing the common package
+  - This resolves React version conflicts between react-hook-form and React 19
+  - Example: `npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz`
 
 ### Expo Issues:
 - Expo CLI not found:
