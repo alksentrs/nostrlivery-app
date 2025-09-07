@@ -10,6 +10,7 @@ This workspace contains three packages:
 
 - Node.js 18+ (recommended) and npm 9+
 - Android Studio or Xcode for running on devices/simulators (optional)
+- Backend Nostr server running (see Backend Setup section below)
 
 ## First-time setup
 
@@ -50,6 +51,32 @@ cd ../company
 npm i --ignore-scripts ../common/odevlibertario-nostrlivery-common-*.tgz
 ```
 
+## Backend Setup
+
+The mobile apps require a backend Nostr server to be running. The current configuration expects:
+
+- **API Server**: `http://192.168.1.199:3000`
+- **Nostr Relay**: `ws://192.168.1.199:7000`
+- **Node NPUB**: `npub1qpfswwjps7y8e5f89drhaxh8w3xjrzdh7dhmk7d764szg5gflywsl3lyad`
+
+### Required Backend Endpoints:
+- `GET /identity` - Returns the node's npub
+- `GET /health` - Server health status
+- `POST /entrypoint` - Accepts Nostr events for processing
+- `GET /username/:npub` - Get username for a given npub
+- `GET /driver/company-associations/:npub` - Get driver company associations
+
+### Testing Backend Connection:
+```bash
+# Test API server
+curl http://192.168.1.199:3000/identity
+curl http://192.168.1.199:3000/health
+
+# Should return:
+# /identity: npub1qpfswwjps7y8e5f89drhaxh8w3xjrzdh7dhmk7d764szg5gflywsl3lyad
+# /health: {"status":"healthy","timestamp":"..."}
+```
+
 ## Running apps (Expo)
 
 Because global `expo` may be unavailable, use the local CLI bundled with the `expo` package:
@@ -65,6 +92,7 @@ node ./node_modules/expo/bin/cli start --clear
 ```
 
 - Press `a` for Android, `w` for web, or scan the QR with Expo Go.
+- **Note**: Ensure the backend server is running before starting the mobile apps.
 
 ## SDK version alignment
 
@@ -81,6 +109,18 @@ node ./node_modules/expo/bin/cli install --fix
 
 ## Troubleshooting
 
+### Backend Connection Issues:
+- **"Failed to connect to node server" error**:
+  - Verify backend server is running: `curl http://192.168.1.199:3000/health`
+  - Check network connectivity: `ping 192.168.1.199`
+  - Ensure correct IP address in `common/src/screens/NodeSelection/index.tsx`
+  - Verify port 3000 is accessible (not 7000 for API calls)
+
+- **Node selection screen shows empty float**:
+  - This was fixed by auto-initializing the node URL and adding validation
+  - Ensure the common package is rebuilt after changes
+
+### Expo Issues:
 - Expo CLI not found:
   - Use the local binary: `node ./node_modules/expo/bin/cli <command>`.
 

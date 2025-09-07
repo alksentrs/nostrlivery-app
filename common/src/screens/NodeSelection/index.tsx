@@ -7,13 +7,21 @@ import { SelectInput } from "../../components/SelectInput"
 import { ActionButton } from "../../components/ActionButton"
 
 export const NodeSelectionScreen = ({ navigation }: any) => {
-    const [nodeUrl, onChangeNodeUrl] = useState("")
+    const [nodeUrl, onChangeNodeUrl] = useState("http://192.168.1.199:3000")
     const [isFetchingIdentity, setIsFetchingIdentity] = useState(false)
 
     const nodeService = new NodeService()
     const storageService = new StorageService()
 
     const selectNode = () => {
+        if (!nodeUrl || nodeUrl.trim() === "") {
+            Toast.show({
+                type: "error",
+                text1: "Please select a node server",
+            })
+            return
+        }
+
         setIsFetchingIdentity(true)
         nodeService
             .getNodeIdentity(nodeUrl)
@@ -21,7 +29,7 @@ export const NodeSelectionScreen = ({ navigation }: any) => {
             .catch((e) => {
                 Toast.show({
                     type: "error",
-                    text1: e.message,
+                    text1: e.message || "Failed to connect to node server",
                 })
             })
             .finally(() => {
@@ -44,7 +52,7 @@ export const NodeSelectionScreen = ({ navigation }: any) => {
                 Node Selection
             </Text>
             <SelectInput
-                data={[{ label: "Localhost", value: "http://localhost:3000" }]}
+                data={[{ label: "Node Server (199:3000)", value: "http://192.168.1.199:3000" }]}
                 emptyMessage={"Select your node"}
                 callback={onChangeNodeUrl}
             ></SelectInput>
