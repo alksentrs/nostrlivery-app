@@ -12,6 +12,7 @@ export {NostrEvent} from './model/NostrEvent'
 export {ActionButton} from './components/ActionButton'
 export {FormTextInput} from './components/FormTextInput'
 export {SelectInput} from './components/SelectInput'
+export {ConfirmationModal} from './components/ConfirmationModal'
 
 export {LoginScreen} from './screens/Login'
 export {NodeSelectionScreen} from './screens/NodeSelection'
