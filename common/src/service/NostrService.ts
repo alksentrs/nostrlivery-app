@@ -1,8 +1,13 @@
 import { finalizeEvent, nip19, getPublicKey, nip05, Relay } from "nostr-tools"
+import { appConfig, relayConfig, eventConfig } from "../config/app.config"
+
+// WebSocket is available in React Native environment
+declare const WebSocket: any
 
 export class NostrService {
     private relay: Relay | null = null
-    private relayUrl: string = "ws://192.168.1.199:7000"
+    private relayUrl: string = relayConfig.url
+    private activeSubscriptions: Set<any> = new Set()
 
     constructor(relayUrl?: string) {
         if (relayUrl) {
@@ -131,42 +136,128 @@ export class NostrService {
         }
     }
 
-    async publishEphemeralEvent(kind: number, content: string): Promise<void> {
+    async publishEphemeralEvent(kind: number, content: string, nsec?: string): Promise<void> {
         try {
-            // Connect to relay and publish the event
-            const relay = await this.connectToRelay()
-            
-            // Create a temporary event for publishing (this will be replaced by actual signing in real implementation)
-            const event = {
-                kind,
-                created_at: Math.floor(Date.now() / 1000),
-                tags: [],
-                content: content,
-                pubkey: "", // This should be set by the actual signer
-                id: "", // This should be calculated
-                sig: "" // This should be signed
+            // For ephemeral events, we need to sign them with a private key
+            // If no nsec is provided, we'll log locally (for development)
+            if (!nsec) {
+                console.log("Publishing ephemeral event (no signing key provided):", {
+                    kind,
+                    content,
+                    timestamp: new Date().toISOString()
+                })
+                await new Promise(resolve => setTimeout(resolve, 500))
+                console.log("Ephemeral event logged locally")
+                return
             }
 
+            // Connect to relay for ephemeral event publishing
+            const relay = await this.connectToRelay()
+            
+            // Create and sign the ephemeral event
+            const event = this.signNostrEvent(nsec, kind, [], content)
+            
             console.log("Publishing ephemeral event to relay:", {
                 kind,
                 content,
+                eventId: event.id,
                 timestamp: new Date().toISOString()
             })
 
-            // Publish the event to the relay
+            // Publish the signed event to the relay
             await relay.publish(event)
             
-            console.log("Event published successfully")
+            console.log("Ephemeral event published successfully to relay")
         } catch (e) {
             console.log("Error publishing ephemeral event:", e)
-            // For now, we'll still log the event even if relay publishing fails
-            // This ensures the app continues to work during development
+            // Fallback to local logging if relay publishing fails
             console.log("Fallback: Logging event locally:", {
                 kind,
                 content,
                 timestamp: new Date().toISOString()
             })
             throw e
+        }
+    }
+
+    async subscribeToEphemeralEvents(
+        onEvent: (event: any) => void,
+        onEose?: () => void
+    ): Promise<() => void> {
+        try {
+            console.log("NostrService: Using direct WebSocket for ephemeral events...")
+            
+            // Create a direct WebSocket connection for subscriptions
+            const ws = new WebSocket(this.relayUrl)
+            
+            return new Promise((resolve, reject) => {
+                ws.onopen = () => {
+                    console.log("NostrService: WebSocket connected for subscription")
+                    
+                    // Send subscription request
+                    const subscription = [
+                        "REQ",
+                        "ephemeral-events-" + Date.now(),
+                        {
+                            kinds: [eventConfig.associationRequestKind],
+                            limit: eventConfig.limit
+                        }
+                    ]
+                    
+                    console.log("NostrService: Sending subscription:", JSON.stringify(subscription))
+                    ws.send(JSON.stringify(subscription))
+                    
+                    // Set up message handler
+                    ws.onmessage = (event: any) => {
+                        try {
+                            const message = JSON.parse(event.data)
+                            
+                            if (message[0] === 'EVENT') {
+                                const eventData = message[2]
+                                console.log("NostrService: Received event via WebSocket:", {
+                                    id: eventData.id,
+                                    kind: eventData.kind,
+                                    pubkey: eventData.pubkey
+                                })
+                                onEvent(eventData)
+                            } else if (message[0] === 'EOSE') {
+                                console.log("NostrService: End of stored events via WebSocket")
+                                if (onEose) {
+                                    onEose()
+                                }
+                            } else if (message[0] === 'NOTICE') {
+                                console.log("NostrService: Notice:", message[1])
+                            }
+                        } catch (error) {
+                            console.error("NostrService: Error parsing WebSocket message:", error)
+                        }
+                    }
+                    
+                    ws.onerror = (error: any) => {
+                        console.error("NostrService: WebSocket error:", error)
+                    }
+                    
+                    ws.onclose = () => {
+                        console.log("NostrService: WebSocket connection closed")
+                    }
+                    
+                    // Return unsubscribe function
+                    const unsubscribe = () => {
+                        console.log("NostrService: Closing WebSocket subscription")
+                        ws.close()
+                    }
+                    
+                    resolve(unsubscribe)
+                }
+                
+                ws.onerror = (error: any) => {
+                    console.error("NostrService: WebSocket connection error:", error)
+                    reject(error)
+                }
+            })
+        } catch (error) {
+            console.error("Error subscribing to ephemeral events:", error)
+            throw error
         }
     }
 

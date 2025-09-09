@@ -7,7 +7,7 @@ import {
     Alert,
 } from "react-native"
 import { Button, Card, Title, Paragraph, ActivityIndicator } from "react-native-paper"
-import { NostrService } from "@odevlibertario/nostrlivery-common"
+import { NostrService, StorageService, StoredKey } from "@odevlibertario/nostrlivery-common"
 
 interface DriverProfile {
     name?: string
@@ -19,11 +19,15 @@ interface DriverProfile {
 export const DriverPreviewScreen = ({ navigation, route }: any) => {
     const { driverNpub, profile } = route.params
     const [isAssociating, setIsAssociating] = useState(false)
+    const storageService = new StorageService()
 
     const handleAssociateDriver = async () => {
         setIsAssociating(true)
         try {
             const nostrService = new NostrService()
+            
+            // Get company's nsec for signing the ephemeral event
+            const nsec = await storageService.get(StoredKey.NSEC)
             
             // Create ephemeral event of kind 20000
             const associationRequest = {
@@ -31,7 +35,7 @@ export const DriverPreviewScreen = ({ navigation, route }: any) => {
                 driverNpub: driverNpub
             }
 
-            await nostrService.publishEphemeralEvent(20000, JSON.stringify(associationRequest))
+            await nostrService.publishEphemeralEvent(20000, JSON.stringify(associationRequest), nsec)
             
             Alert.alert(
                 "Success", 

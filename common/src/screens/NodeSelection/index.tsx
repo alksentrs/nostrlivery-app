@@ -5,9 +5,10 @@ import { NodeService } from "../../service/NodeService"
 import { StorageService, StoredKey } from "../../service/StorageService"
 import { SelectInput } from "../../components/SelectInput"
 import { ActionButton } from "../../components/ActionButton"
+import { nodeConfig } from "../../config/app.config"
 
 export const NodeSelectionScreen = ({ navigation }: any) => {
-    const [nodeUrl, onChangeNodeUrl] = useState("http://192.168.1.199:3000")
+    const [nodeUrl, onChangeNodeUrl] = useState(nodeConfig.url)
     const [isFetchingIdentity, setIsFetchingIdentity] = useState(false)
 
     const nodeService = new NodeService()
@@ -52,7 +53,7 @@ export const NodeSelectionScreen = ({ navigation }: any) => {
                 Node Selection
             </Text>
             <SelectInput
-                data={[{ label: "Node Server (199:3000)", value: "http://192.168.1.199:3000" }]}
+                data={[{ label: `Node Server (${nodeConfig.url})`, value: nodeConfig.url }]}
                 emptyMessage={"Select your node"}
                 callback={onChangeNodeUrl}
             ></SelectInput>

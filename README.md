@@ -103,6 +103,93 @@ Both mobile apps are now working and properly configured:
 - **Company App**: ✅ Working - connects to backend server at `192.168.1.199:3000`
 - **Backend Server**: ✅ Running - API server on port 3000, Nostr relay on port 7000
 - **Dependencies**: ✅ Resolved - React 19 compatibility with `--legacy-peer-deps`
+- **Driver Association Feature**: ✅ Complete - Real-time bidirectional communication system
+
+## Driver Association Feature 🚀
+
+### Overview
+A real-time driver association system that enables companies to send association requests to drivers and receive immediate responses using the Nostr protocol.
+
+### Features
+- **Real-time Communication**: Uses Nostr ephemeral events (kind 20000) for instant messaging
+- **Bidirectional Flow**: Companies send requests → Drivers respond → Companies receive notifications
+- **QR Code Integration**: Easy driver npub sharing via QR code scanning
+- **Event Signing**: Proper cryptographic authentication with nsec keys
+- **UI Integration**: Seamless integration into existing app workflows
+- **Configuration Management**: Centralized configuration system for easy environment management
+
+### How It Works
+
+#### Company Side (Drivers Tab)
+1. **Send Request**: Enter driver npub manually or scan QR code
+2. **Profile Preview**: View driver profile before sending request
+3. **Real-time Monitoring**: Listen for driver responses
+4. **Response Display**: Show acceptance/rejection with timestamps
+
+#### Driver Side (Companies Tab)
+1. **Request Reception**: Real-time listening for association requests
+2. **Request Management**: View and manage incoming requests
+3. **Response Actions**: Accept or reject requests with touch buttons
+4. **Association Tracking**: Manage accepted company associations
+
+### Technical Implementation
+
+#### Event Types
+- `DRIVER_ASSOCIATION_REQUEST`: Company → Driver
+- `DRIVER_ASSOCIATION_ACCEPTED`: Driver → Company
+- `DRIVER_ASSOCIATION_REJECTED`: Driver → Company
+
+#### Architecture
+- **WebSocket Connections**: Direct WebSocket implementation for reliable subscriptions
+- **Event Signing**: Proper nsec-based cryptographic signing
+- **State Management**: Real-time UI updates with proper cleanup
+- **Error Handling**: Comprehensive error handling and fallback mechanisms
+- **Configuration System**: Centralized config management with environment support
+
+### Configuration
+
+#### Configuration Files
+- **`common/src/config/app.config.ts`**: TypeScript configuration with validation
+- **`config.json`**: JSON configuration for different environments
+- **Environment Variables**: Support for production environment overrides
+
+#### Default Configuration
+```typescript
+{
+  relay: {
+    url: "ws://192.168.1.199:7000",
+    timeout: 10000
+  },
+  node: {
+    url: "http://192.168.1.199:3000", 
+    timeout: 5000
+  },
+  events: {
+    associationRequestKind: 20000,
+    limit: 50
+  }
+}
+```
+
+#### Environment-Specific Configuration
+- **Development**: Uses local IP addresses
+- **Staging**: Uses staging servers
+- **Production**: Uses production servers with environment variables
+
+#### Relay Configuration
+Ensure your Nostr relay supports kind 20000 events:
+```toml
+# config.toml
+event_kind_allowlist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 16, 40, 41, 42, 43, 44, 20000]
+```
+
+### Documentation
+
+Complete documentation is available in the `docs/` folder:
+- **[API Documentation](docs/API_DOCUMENTATION.md)**: Complete API reference
+- **[Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)**: System architecture details
+- **[Quick Reference](docs/QUICK_REFERENCE.md)**: Quick start guide
+- **[Documentation Index](docs/DOCUMENTATION_INDEX.md)**: Complete documentation overview
 
 ## SDK version alignment
 

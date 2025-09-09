@@ -11,13 +11,14 @@
     "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
-    "@odevlibertario/nostrlivery-common": "file:../common/odevlibertario-nostrlivery-common-1.0.5.tgz",
+    "@odevlibertario/nostrlivery-common": "file:../common/odevlibertario-nostrlivery-common-1.0.6.tgz",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
     "@types/react-native-get-random-values": "1.8.0",
     "expo": "^53.0.0",
+    "expo-camera": "^16.1.11",
     "expo-crypto": "~14.1.5",
     "expo-location": "~18.1.6",
     "expo-status-bar": "~2.2.3",

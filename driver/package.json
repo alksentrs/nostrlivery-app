@@ -11,7 +11,7 @@
     "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
-    "@odevlibertario/nostrlivery-common": "file:../common/odevlibertario-nostrlivery-common-1.0.5.tgz",
+    "@odevlibertario/nostrlivery-common": "file:../common/odevlibertario-nostrlivery-common-1.0.6.tgz",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
@@ -29,10 +29,12 @@
     "react-native-geolocation-service": "^5.3.1",
     "react-native-get-random-values": "~1.11.0",
     "react-native-paper": "^5.12.3",
+    "react-native-qrcode-svg": "^6.3.15",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-select-dropdown": "^4.0.1",
     "react-native-storage": "^1.0.1",
+    "react-native-svg": "^15.12.1",
     "react-native-toast-message": "^2.2.0",
     "react-native-vector-icons": "^10.0.3",
     "text-encoding": "^0.7.0",
