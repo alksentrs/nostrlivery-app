@@ -6,6 +6,7 @@ import {
     Image,
 } from "react-native"
 import { Button, Card, Title, Paragraph } from "react-native-paper"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import Toast from "react-native-toast-message"
 import { NostrService, StorageService, StoredKey } from "@odevlibertario/nostrlivery-common"
 
@@ -81,9 +82,11 @@ export const DriverPreviewScreen = ({ navigation, route }: any) => {
                         <Image source={{ uri: picture }} style={styles.profileImage} />
                     ) : (
                         <View style={styles.placeholderImage}>
-                            <Text style={styles.placeholderText}>
-                                {displayName.charAt(0).toUpperCase()}
-                            </Text>
+                            <MaterialCommunityIcons 
+                                name="account" 
+                                size={40} 
+                                color="#666" 
+                            />
                         </View>
                     )}
                     
@@ -160,15 +163,12 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: "#2f1650",
+        backgroundColor: "#e0e0e0",
         justifyContent: "center",
         alignItems: "center",
         marginRight: 16,
-    },
-    placeholderText: {
-        color: "white",
-        fontSize: 32,
-        fontWeight: "bold",
+        borderWidth: 1,
+        borderColor: "#d0d0d0",
     },
     profileInfo: {
         flex: 1,
