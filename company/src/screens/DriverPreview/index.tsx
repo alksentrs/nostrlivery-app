@@ -4,9 +4,9 @@ import {
     Text,
     StyleSheet,
     Image,
-    Alert,
 } from "react-native"
-import { Button, Card, Title, Paragraph, ActivityIndicator } from "react-native-paper"
+import { Button, Card, Title, Paragraph } from "react-native-paper"
+import Toast from "react-native-toast-message"
 import { NostrService, StorageService, StoredKey } from "@odevlibertario/nostrlivery-common"
 
 interface DriverProfile {
@@ -37,19 +37,22 @@ export const DriverPreviewScreen = ({ navigation, route }: any) => {
 
             await nostrService.publishEphemeralEvent(20000, JSON.stringify(associationRequest), nsec)
             
-            Alert.alert(
-                "Success", 
-                "Driver association request sent successfully!",
-                [
-                    {
-                        text: "OK",
-                        onPress: () => navigation.goBack()
-                    }
-                ]
-            )
+            // Show green success toast
+            Toast.show({
+                type: "success",
+                text1: "Association request sent!",
+                text2: "Driver will be notified of your request"
+            })
+            
+            // Navigate back to drivers tab
+            navigation.navigate("Drivers")
         } catch (error) {
             console.error("Error sending association request:", error)
-            Alert.alert("Error", "Failed to send association request")
+            Toast.show({
+                type: "error",
+                text1: "Failed to send association request",
+                text2: "Please try again"
+            })
         } finally {
             setIsAssociating(false)
         }
@@ -89,17 +92,17 @@ export const DriverPreviewScreen = ({ navigation, route }: any) => {
                 <Button
                     mode="contained"
                     onPress={handleAssociateDriver}
-                    loading={isAssociating}
                     disabled={isAssociating}
                     style={styles.associateButton}
                     contentStyle={styles.buttonContent}
                 >
-                    {isAssociating ? "Sending Request..." : "Associate Driver"}
+                    Associate Driver
                 </Button>
                 
                 <Button
                     mode="outlined"
-                    onPress={() => navigation.goBack()}
+                    onPress={() => navigation.navigate("Drivers")}
+                    disabled={isAssociating}
                     style={styles.cancelButton}
                     contentStyle={styles.buttonContent}
                 >
