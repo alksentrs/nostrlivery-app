@@ -28,6 +28,7 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
     const [driverResponses, setDriverResponses] = useState<any[]>([])
     const [isListening, setIsListening] = useState(false)
     const [unsubscribeFunction, setUnsubscribeFunction] = useState<(() => void) | null>(null)
+    const [npubError, setNpubError] = useState("")
 
     const nostrService = new NostrService()
     const storageService = new StorageService()
@@ -145,28 +146,45 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
         }
     }
 
+    const handleNpubChange = (text: string) => {
+        setDriverNpub(text)
+        // Clear error when user starts typing
+        if (npubError) {
+            setNpubError("")
+        }
+    }
+
     const handleSearchDriver = async () => {
         if (!driverNpub.trim()) {
-            Alert.alert("Error", "Please enter a driver npub")
+            setNpubError("Please enter a driver npub")
+            return
+        }
+
+        // Validate npub format before making the request
+        if (!driverNpub.trim().startsWith('npub1')) {
+            setNpubError("Invalid npub format. Must start with 'npub1'")
             return
         }
 
         setIsLoading(true)
+        setNpubError("") // Clear any previous errors
+        
         try {
             const nostrService = new NostrService()
             const profile = await nostrService.getProfile(driverNpub.trim())
             
-            if (profile) {
+            // Check if we got a valid profile (not the default "Unknown Driver")
+            if (profile && profile.name !== "Unknown Driver" && profile.display_name !== "Unknown") {
                 navigation.navigate("DriverPreview", {
                     driverNpub: driverNpub.trim(),
                     profile: profile
                 })
             } else {
-                Alert.alert("Error", "Driver profile not found")
+                setNpubError("Driver profile not found")
             }
         } catch (error) {
             console.error("Error fetching driver profile:", error)
-            Alert.alert("Error", "Failed to fetch driver profile")
+            setNpubError("Invalid npub format or failed to fetch profile")
         } finally {
             setIsLoading(false)
         }
@@ -174,6 +192,7 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
 
     const handleQRScan = (scannedNpub: string) => {
         setDriverNpub(scannedNpub)
+        setNpubError("") // Clear any errors when scanning
         setShowQRScanner(false)
         // Automatically search for the driver after scanning
         handleSearchDriverWithNpub(scannedNpub)
@@ -181,26 +200,35 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
 
     const handleSearchDriverWithNpub = async (npub: string) => {
         if (!npub.trim()) {
-            Alert.alert("Error", "Please enter a driver npub")
+            setNpubError("Please enter a driver npub")
+            return
+        }
+
+        // Validate npub format before making the request
+        if (!npub.trim().startsWith('npub1')) {
+            setNpubError("Invalid npub format. Must start with 'npub1'")
             return
         }
 
         setIsLoading(true)
+        setNpubError("") // Clear any previous errors
+        
         try {
             const nostrService = new NostrService()
             const profile = await nostrService.getProfile(npub.trim())
             
-            if (profile) {
+            // Check if we got a valid profile (not the default "Unknown Driver")
+            if (profile && profile.name !== "Unknown Driver" && profile.display_name !== "Unknown") {
                 navigation.navigate("DriverPreview", {
                     driverNpub: npub.trim(),
                     profile: profile
                 })
             } else {
-                Alert.alert("Error", "Driver profile not found")
+                setNpubError("Driver profile not found")
             }
         } catch (error) {
             console.error("Error fetching driver profile:", error)
-            Alert.alert("Error", "Failed to fetch driver profile")
+            setNpubError("Invalid npub format or failed to fetch profile")
         } finally {
             setIsLoading(false)
         }
@@ -261,11 +289,15 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
                 <TextInput
                     label="Driver NPUB"
                     value={driverNpub}
-                    onChangeText={setDriverNpub}
+                    onChangeText={handleNpubChange}
                     style={styles.input}
                     placeholder="npub1..."
                     mode="outlined"
+                    error={!!npubError}
                 />
+                {npubError ? (
+                    <Text style={styles.errorText}>{npubError}</Text>
+                ) : null}
                 <View style={styles.buttonContainer}>
                     <Button
                         mode="contained"
@@ -427,5 +459,12 @@ const styles = StyleSheet.create({
     responseTime: {
         fontSize: 12,
         color: "#666",
+    },
+    errorText: {
+        color: "#d32f2f",
+        fontSize: 12,
+        marginTop: 4,
+        marginBottom: 8,
+        marginLeft: 4,
     },
 })
