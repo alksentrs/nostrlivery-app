@@ -17,7 +17,7 @@ interface DriverProfile {
 }
 
 export const DriverPreviewScreen = ({ navigation, route }: any) => {
-    const { driverNpub, profile } = route.params
+    const { driverNpub, profile, onRequestSent } = route.params
     const [isAssociating, setIsAssociating] = useState(false)
     const storageService = new StorageService()
 
@@ -36,6 +36,13 @@ export const DriverPreviewScreen = ({ navigation, route }: any) => {
             }
 
             await nostrService.publishEphemeralEvent(20000, JSON.stringify(associationRequest), nsec)
+            
+            // Add request to the list if callback is provided
+            if (onRequestSent) {
+                const driverName = profile?.display_name || profile?.name || "Unknown Driver"
+                const requestId = Date.now().toString() // Generate a simple request ID
+                onRequestSent(driverNpub, driverName, requestId)
+            }
             
             // Show green success toast
             Toast.show({

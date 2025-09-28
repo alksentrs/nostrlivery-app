@@ -20,18 +20,52 @@ interface AssociatedDriver {
     profilePicture?: string
 }
 
+interface DriverRequest {
+    id: string
+    driverNpub: string
+    driverName: string
+    status: 'Pending' | 'Accepted' | 'Rejected'
+    timestamp: Date
+    requestId: string
+}
+
 export const AssociatedDriversScreen = ({ navigation }: any) => {
     const [driverNpub, setDriverNpub] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [associatedDrivers] = useState<AssociatedDriver[]>([]) // Always empty for now
     const [showQRScanner, setShowQRScanner] = useState(false)
     const [driverResponses, setDriverResponses] = useState<any[]>([])
+    const [driverRequests, setDriverRequests] = useState<DriverRequest[]>([])
     const [isListening, setIsListening] = useState(false)
     const [unsubscribeFunction, setUnsubscribeFunction] = useState<(() => void) | null>(null)
     const [npubError, setNpubError] = useState("")
 
     const nostrService = new NostrService()
     const storageService = new StorageService()
+
+    // Function to add a new driver request
+    const addDriverRequest = (driverNpub: string, driverName: string, requestId: string) => {
+        const newRequest: DriverRequest = {
+            id: Date.now().toString(),
+            driverNpub,
+            driverName,
+            status: 'Pending',
+            timestamp: new Date(),
+            requestId
+        }
+        setDriverRequests(prev => [newRequest, ...prev])
+    }
+
+    // Function to update request status when response is received
+    const updateRequestStatus = (driverNpub: string, status: 'Accepted' | 'Rejected') => {
+        setDriverRequests(prev => 
+            prev.map(request => 
+                request.driverNpub === driverNpub && request.status === 'Pending'
+                    ? { ...request, status }
+                    : request
+            )
+        )
+    }
 
     useEffect(() => {
         console.log("🔄 Company useEffect called - isListening:", isListening, "unsubscribeFunction:", !!unsubscribeFunction)
@@ -106,6 +140,10 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
                                 event: event
                             }])
                             
+                            // Update request status
+                            const status = content.type === "DRIVER_ASSOCIATION_ACCEPTED" ? 'Accepted' : 'Rejected'
+                            updateRequestStatus(content.driverNpub, status)
+                            
                             // Show alert to user
                             const message = content.type === "DRIVER_ASSOCIATION_ACCEPTED" 
                                 ? "Driver accepted your association request!" 
@@ -177,7 +215,8 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
             if (profile && profile.name !== "Unknown Driver" && profile.display_name !== "Unknown") {
                 navigation.navigate("DriverPreview", {
                     driverNpub: driverNpub.trim(),
-                    profile: profile
+                    profile: profile,
+                    onRequestSent: addDriverRequest
                 })
             } else {
                 setNpubError("Driver profile not found")
@@ -221,7 +260,8 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
             if (profile && profile.name !== "Unknown Driver" && profile.display_name !== "Unknown") {
                 navigation.navigate("DriverPreview", {
                     driverNpub: npub.trim(),
-                    profile: profile
+                    profile: profile,
+                    onRequestSent: addDriverRequest
                 })
             } else {
                 setNpubError("Driver profile not found")
@@ -256,31 +296,33 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
                 <Title style={styles.title}>Associated Drivers</Title>
             </View>
 
-            {/* Driver Responses Section */}
+            {/* Driver Requests Section */}
             <Card style={styles.responsesCard}>
                 <Card.Content>
-                    <Title style={styles.responsesTitle}>Driver Responses</Title>
+                    <Title style={styles.responsesTitle}>Driver Requests</Title>
                     <Text style={styles.responsesSubtitle}>
                         {isListening ? "Listening for responses..." : "Not listening"}
                     </Text>
                     <Text style={styles.responsesCount}>
-                        Responses: {driverResponses.length}
+                        Requests: {driverRequests.length}
                     </Text>
-                    {driverResponses.length > 0 && (
+                    {driverRequests.length > 0 && (
                         <View style={styles.responsesList}>
-                            {driverResponses.slice(-3).map((response, index) => (
-                                <View key={response.id} style={styles.responseItem}>
+                            {driverRequests.slice(0, 5).map((request, index) => (
+                                <View key={request.id} style={styles.responseItem}>
                                     <Text style={styles.responseText}>
-                                        {response.responseType === "DRIVER_ASSOCIATION_ACCEPTED" ? "✅" : "❌"} 
-                                        Driver {response.responseType === "DRIVER_ASSOCIATION_ACCEPTED" ? "accepted" : "rejected"} 
-                                        your request
+                                        {request.status === 'Pending' ? "⏳" : request.status === 'Accepted' ? "✅" : "❌"} 
+                                        {request.driverName} - {request.status}
                                     </Text>
                                     <Text style={styles.responseTime}>
-                                        {response.timestamp.toLocaleString()}
+                                        {request.timestamp.toLocaleString()}
                                     </Text>
                                 </View>
                             ))}
                         </View>
+                    )}
+                    {driverRequests.length === 0 && (
+                        <Text style={styles.emptyRequestsText}>No driver requests yet</Text>
                     )}
                 </Card.Content>
             </Card>
@@ -466,5 +508,12 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginBottom: 8,
         marginLeft: 4,
+    },
+    emptyRequestsText: {
+        fontSize: 14,
+        color: "#999",
+        fontStyle: "italic",
+        textAlign: "center",
+        marginTop: 8,
     },
 })
