@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import { TextInput, Button, Card, Title, Paragraph } from "react-native-paper"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import { useFocusEffect } from "@react-navigation/native"
 import { NostrService, StorageService, StoredKey } from "@odevlibertario/nostrlivery-common"
 import { QRScanner } from "../../components/QRScanner"
 
@@ -46,6 +47,17 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
             }
         }
     }, [])
+
+    // Clear npub input when screen loses focus
+    useFocusEffect(
+        React.useCallback(() => {
+            // This runs when the screen comes into focus
+            return () => {
+                // This runs when the screen loses focus
+                setDriverNpub("")
+            }
+        }, [])
+    )
 
     const startListeningForResponses = async () => {
         try {
