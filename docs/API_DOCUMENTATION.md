@@ -161,7 +161,7 @@ interface Profile {
 ### Connection Details
 
 - **Protocol:** WebSocket (ws://)
-- **Relay URL:** `ws://192.168.1.199:7000`
+- **Relay URL:** `ws://127.0.0.1:7000`
 - **Event Kind:** `20000` (ephemeral events)
 - **Subscription Format:** `["REQ", "subscription-id", {"kinds": [20000], "limit": 50}]`
 
@@ -259,7 +259,7 @@ event_kind_allowlist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 16, 40, 41, 42, 43, 44, 20000
 
 ### Network Requirements
 
-- **Relay URL**: `ws://192.168.1.199:7000`
+- **Relay URL**: `ws://127.0.0.1:7000`
 - **Event Kind**: `20000` (ephemeral events)
 - **WebSocket**: Direct WebSocket connections for subscriptions
 - **Timeout**: 10 seconds for connection attempts
@@ -267,7 +267,7 @@ event_kind_allowlist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 16, 40, 41, 42, 43, 44, 20000
 ### Environment Variables
 
 ```typescript
-const RELAY_URL = "ws://192.168.1.199:7000";
+const RELAY_URL = "ws://127.0.0.1:7000";
 const EVENT_KIND = 20000;
 const CONNECTION_TIMEOUT = 10000;
 ```

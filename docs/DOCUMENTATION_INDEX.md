@@ -142,8 +142,8 @@ Company App → Nostr Relay → Driver App
 ### Development Resources
 - **Repository**: `nostrlivery-app` and `nostrlivery-node`
 - **Branch**: `feat/driver_association_request`
-- **Relay**: `ws://192.168.1.199:7000`
-- **API Server**: `http://192.168.1.199:3000`
+- **Relay**: `ws://127.0.0.1:7000`
+- **API Server**: `http://127.0.0.1:3000`
 
 ### Debug Tools
 - **Test Scripts**: `test-driver-subscription.js`, `verify-relay.js`

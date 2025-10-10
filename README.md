@@ -57,8 +57,8 @@ npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 
 The mobile apps require a backend Nostr server to be running. The current configuration expects:
 
-- **API Server**: `http://192.168.1.199:3000`
-- **Nostr Relay**: `ws://192.168.1.199:7000`
+- **API Server**: `http://127.0.0.1:3000`
+- **Nostr Relay**: `ws://127.0.0.1:7000`
 - **Node NPUB**: `npub1qpfswwjps7y8e5f89drhaxh8w3xjrzdh7dhmk7d764szg5gflywsl3lyad`
 
 ### Required Backend Endpoints:
@@ -71,8 +71,8 @@ The mobile apps require a backend Nostr server to be running. The current config
 ### Testing Backend Connection:
 ```bash
 # Test API server
-curl http://192.168.1.199:3000/identity
-curl http://192.168.1.199:3000/health
+curl http://127.0.0.1:3000/identity
+curl http://127.0.0.1:3000/health
 
 # Should return:
 # /identity: npub1qpfswwjps7y8e5f89drhaxh8w3xjrzdh7dhmk7d764szg5gflywsl3lyad
@@ -99,8 +99,8 @@ node ./node_modules/expo/bin/cli start --clear
 ## Current Status ✅
 
 Both mobile apps are now working and properly configured:
-- **Driver App**: ✅ Working - connects to backend server at `192.168.1.199:3000`
-- **Company App**: ✅ Working - connects to backend server at `192.168.1.199:3000`
+- **Driver App**: ✅ Working - connects to backend server at `127.0.0.1:3000`
+- **Company App**: ✅ Working - connects to backend server at `127.0.0.1:3000`
 - **Backend Server**: ✅ Running - API server on port 3000, Nostr relay on port 7000
 - **Dependencies**: ✅ Resolved - React 19 compatibility with `--legacy-peer-deps`
 - **Driver Association Feature**: ✅ Complete - Real-time bidirectional communication system
@@ -157,11 +157,11 @@ A real-time driver association system that enables companies to send association
 ```typescript
 {
   relay: {
-    url: "ws://192.168.1.199:7000",
+    url: "ws://127.0.0.1:7000",
     timeout: 10000
   },
   node: {
-    url: "http://192.168.1.199:3000", 
+    url: "http://127.0.0.1:3000", 
     timeout: 5000
   },
   events: {
@@ -208,8 +208,8 @@ node ./node_modules/expo/bin/cli install --fix
 
 ### Backend Connection Issues:
 - **"Failed to connect to node server" error**:
-  - Verify backend server is running: `curl http://192.168.1.199:3000/health`
-  - Check network connectivity: `ping 192.168.1.199`
+  - Verify backend server is running: `curl http://127.0.0.1:3000/health`
+  - Check network connectivity: `ping 127.0.0.1`
   - Ensure correct IP address in `common/src/screens/NodeSelection/index.tsx`
   - Verify port 3000 is accessible (not 7000 for API calls)
 

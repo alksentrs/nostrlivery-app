@@ -67,7 +67,7 @@ event_kind_allowlist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 16, 40, 41, 42, 43, 44, 20000
 ```
 
 ### Network Settings
-- **Relay URL**: `ws://192.168.1.199:7000`
+- **Relay URL**: `ws://127.0.0.1:7000`
 - **Event Kind**: `20000`
 - **Timeout**: `10000ms`
 
@@ -178,7 +178,7 @@ node verify-relay.js
 ### Debug Commands
 ```bash
 # Check relay status
-curl http://192.168.1.199:3000/health
+curl http://127.0.0.1:3000/health
 
 # Test WebSocket connection
 node test-driver-subscription.js

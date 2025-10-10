@@ -35,11 +35,11 @@ Environment-specific configurations in JSON format:
 {
   "development": {
     "relay": {
-      "url": "ws://192.168.1.199:7000",
+      "url": "ws://127.0.0.1:7000",
       "timeout": 10000
     },
     "node": {
-      "url": "http://192.168.1.199:3000",
+      "url": "http://127.0.0.1:3000",
       "timeout": 5000
     },
     "events": {
@@ -53,8 +53,8 @@ Environment-specific configurations in JSON format:
 ## Environment Configuration
 
 ### Development Environment
-- **Relay**: Local WebSocket server (`ws://192.168.1.199:7000`)
-- **Node**: Local API server (`http://192.168.1.199:3000`)
+- **Relay**: Local WebSocket server (`ws://127.0.0.1:7000`)
+- **Node**: Local API server (`http://127.0.0.1:3000`)
 - **Timeouts**: Shorter timeouts for faster development
 - **Event Limit**: 50 events for testing
 
@@ -210,8 +210,8 @@ console.log("Configuration valid:", validateConfig(appConfig));
 ### Before (Hardcoded)
 ```typescript
 // Old hardcoded approach
-const relayUrl = "ws://192.168.1.199:7000";
-const nodeUrl = "http://192.168.1.199:3000";
+const relayUrl = "ws://127.0.0.1:7000";
+const nodeUrl = "http://127.0.0.1:3000";
 const eventKind = 20000;
 ```
 
