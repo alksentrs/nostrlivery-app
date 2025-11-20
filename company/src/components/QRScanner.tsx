@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, Platform } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 
@@ -11,6 +11,14 @@ interface QRScannerProps {
 export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
     const [permission, requestPermission] = useCameraPermissions()
     const [scanned, setScanned] = useState(false)
+
+    const openSettings = () => {
+        if (Platform.OS === 'ios') {
+            Linking.openURL('app-settings:')
+        } else {
+            Linking.openSettings()
+        }
+    }
 
     const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
         if (scanned) return
@@ -47,15 +55,52 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
     }
 
     if (!permission.granted) {
+        const handleRequestPermission = async () => {
+            const result = await requestPermission()
+            if (!result.granted) {
+                Alert.alert(
+                    'Camera Permission Required',
+                    'Camera access is required to scan QR codes. Please enable it in your device settings.',
+                    [
+                        {
+                            text: 'Open Settings',
+                            onPress: openSettings
+                        },
+                        {
+                            text: 'Cancel',
+                            style: 'cancel',
+                            onPress: onClose
+                        }
+                    ]
+                )
+            }
+        }
+
         return (
             <View style={styles.container}>
-                <Text style={styles.message}>Camera permission denied</Text>
-                <TouchableOpacity style={styles.button} onPress={requestPermission}>
-                    <Text style={styles.buttonText}>Request Permission</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={onClose}>
-                    <Text style={styles.buttonText}>Close</Text>
-                </TouchableOpacity>
+                <View style={styles.permissionContainer}>
+                    <MaterialCommunityIcons name="camera-off" color="#fff" size={64} />
+                    <Text style={styles.message}>Camera permission is required</Text>
+                    <Text style={styles.subMessage}>
+                        Please grant camera access to scan driver QR codes
+                    </Text>
+                    <TouchableOpacity style={styles.button} onPress={handleRequestPermission}>
+                        <Text style={styles.buttonText}>Grant Permission</Text>
+                    </TouchableOpacity>
+                    {permission.canAskAgain === false && (
+                        <>
+                            <Text style={styles.subMessage}>
+                                Permission was previously denied. Please enable it in settings.
+                            </Text>
+                            <TouchableOpacity style={[styles.button, styles.settingsButton]} onPress={openSettings}>
+                                <Text style={styles.buttonText}>Open Settings</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+                    <TouchableOpacity style={[styles.button, styles.closeButton]} onPress={onClose}>
+                        <Text style={styles.buttonText}>Close</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         )
     }
@@ -170,11 +215,33 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         margin: 20,
     },
+    permissionContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    subMessage: {
+        color: '#aaa',
+        fontSize: 14,
+        textAlign: 'center',
+        marginTop: 10,
+        marginBottom: 20,
+        paddingHorizontal: 20,
+    },
     button: {
         backgroundColor: '#2f1650',
         padding: 15,
         borderRadius: 8,
-        margin: 20,
+        marginVertical: 10,
+        minWidth: 200,
+    },
+    settingsButton: {
+        backgroundColor: '#4a2c7a',
+    },
+    closeButton: {
+        backgroundColor: '#666',
+        marginTop: 20,
     },
     buttonText: {
         color: '#fff',
