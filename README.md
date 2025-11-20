@@ -61,6 +61,35 @@ The mobile apps require a backend Nostr server to be running. The current config
 - **Nostr Relay**: `ws://127.0.0.1:7000`
 - **Node NPUB**: `npub1qpfswwjps7y8e5f89drhaxh8w3xjrzdh7dhmk7d764szg5gflywsl3lyad`
 
+### Configuring Node and Relay IP Addresses
+
+To change the node server IP or relay IP address, edit the configuration file:
+
+**Location**: `common/src/config/app.config.ts`
+
+```typescript
+// Default configuration
+const defaultConfig: AppConfig = {
+  relay: {
+    url: "ws://127.0.0.1:7000",  // Change this to your relay IP/URL
+    timeout: 10000,
+  },
+  node: {
+    url: "http://127.0.0.1:3000",  // Change this to your node server IP/URL
+    timeout: 5000,
+  },
+  events: {
+    associationRequestKind: 20000,
+    limit: 50,
+  },
+};
+```
+
+**After changing the configuration:**
+1. Rebuild the common package: `cd common && npm run build`
+2. Repack the common package: `npm pack`
+3. Reinstall in both apps (see "Rebuilding the shared `common` package" section below)
+
 ### Required Backend Endpoints:
 - `GET /identity` - Returns the node's npub
 - `GET /health` - Server health status
@@ -149,26 +178,50 @@ A real-time driver association system that enables companies to send association
 ### Configuration
 
 #### Configuration Files
-- **`common/src/config/app.config.ts`**: TypeScript configuration with validation
-- **`config.json`**: JSON configuration for different environments
+- **`common/src/config/app.config.ts`**: TypeScript configuration with validation (primary configuration file)
+- **`config.json`**: JSON configuration for different environments (reference/example)
 - **Environment Variables**: Support for production environment overrides
 
-#### Default Configuration
+#### Node and Relay IP Configuration
+
+**Location**: `common/src/config/app.config.ts` (lines 16-30)
+
+This is where you configure the node server IP address and relay WebSocket URL. Both the driver and company apps use this shared configuration:
+
 ```typescript
-{
+// Default configuration
+const defaultConfig: AppConfig = {
   relay: {
-    url: "ws://127.0.0.1:7000",
-    timeout: 10000
+    url: "ws://127.0.0.1:7000",  // Nostr relay WebSocket URL
+    timeout: 10000,
   },
   node: {
-    url: "http://127.0.0.1:3000", 
-    timeout: 5000
+    url: "http://127.0.0.1:3000",  // Node API server HTTP URL
+    timeout: 5000,
   },
   events: {
     associationRequestKind: 20000,
-    limit: 50
-  }
-}
+    limit: 50,
+  },
+};
+```
+
+**To change the IP addresses:**
+1. Edit `common/src/config/app.config.ts`
+2. Update the `url` values in `defaultConfig.relay.url` and `defaultConfig.node.url`
+3. Rebuild and repack the common package (see "Rebuilding the shared `common` package" section)
+4. Reinstall the updated package in both driver and company apps
+
+**Example for network access:**
+```typescript
+node: {
+  url: "http://192.168.1.199:3000",  // Use your machine's local IP
+  timeout: 5000,
+},
+relay: {
+  url: "ws://192.168.1.199:7000",  // Use your machine's local IP
+  timeout: 10000,
+},
 ```
 
 #### Environment-Specific Configuration
@@ -210,8 +263,9 @@ node ./node_modules/expo/bin/cli install --fix
 - **"Failed to connect to node server" error**:
   - Verify backend server is running: `curl http://127.0.0.1:3000/health`
   - Check network connectivity: `ping 127.0.0.1`
-  - Ensure correct IP address in `common/src/screens/NodeSelection/index.tsx`
+  - **Configure the correct IP address** in `common/src/config/app.config.ts` (see "Configuring Node and Relay IP Addresses" section above)
   - Verify port 3000 is accessible (not 7000 for API calls)
+  - After changing the IP, rebuild and reinstall the common package
 
 - **Node selection screen shows empty float**:
   - This was fixed by auto-initializing the node URL and adding validation
