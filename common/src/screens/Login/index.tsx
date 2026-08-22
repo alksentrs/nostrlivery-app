@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { StyleSheet, Text, TextInput, View } from "react-native"
 import Toast from "react-native-toast-message"
 import { getPublicKey, nip19 } from "nostr-tools"
@@ -13,6 +13,31 @@ export const LoginScreen = ({ navigation }: any) => {
     const nodeService = new NodeService()
     const storageService = new StorageService()
 
+    useEffect(() => {
+        let cancelled = false
+
+        storageService.areValuesPresent(StoredKey.NODE_NPUB).then((isPresent) => {
+            if (!cancelled && !isPresent) {
+                navigation.replace("NodeSelection")
+            }
+        })
+
+        storageService
+            .areValuesPresent(StoredKey.PROFILE)
+            .then((isPresent) => {
+                if (!cancelled && isPresent) {
+                    navigation.replace("Nostrlivery")
+                }
+            })
+            .catch((e) => {
+                console.log(e)
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [navigation])
+
     const authenticate = async () => {
         setIsAuthenticating(true)
         try {
@@ -25,7 +50,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
             if (!ValidationUtils.isEmpty(profile)) {
                 await storageService.set(StoredKey.PROFILE, profile)
-                navigation.navigate("Nostrlivery")
+                navigation.replace("Nostrlivery")
             } else {
                 throw new Error("ValidationFailure: Profile is empty")
             }
@@ -40,23 +65,6 @@ export const LoginScreen = ({ navigation }: any) => {
             setIsAuthenticating(false)
         }
     }
-
-    storageService.areValuesPresent(StoredKey.NODE_NPUB).then((isPresent) => {
-        if (!isPresent) {
-            navigation.navigate("NodeSelectionScreen")
-        }
-    })
-
-    storageService
-        .areValuesPresent(StoredKey.PROFILE)
-        .then((isPresent) => {
-            if (isPresent) {
-                navigation.navigate("Nostrlivery")
-            }
-        })
-        .catch((e) => {
-            console.log(e)
-        })
 
     const navigateToSignUp = () => {
         navigation.navigate("SignUp")

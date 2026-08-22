@@ -9,6 +9,7 @@ export const ProfileScreen = ({ navigation }: any) => {
     const [nodeUrl, setNodeUrl] = useState<string>("")
     const [latitude, setLatitude] = useState<string>("")
     const [longitude, setLongitude] = useState<string>("")
+    const [lud16, setLud16] = useState<string>("")
     const [disabledNodeUrlBtn, setDisabledNodeUrlBtn] = useState<boolean>(true)
     const storageService = new StorageService()
     const nodeService = new NodeService()
@@ -27,8 +28,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                 navigation.navigate("Login")
             }
             setProfile(data)
-            setLongitude(data.location.longitude)
-            setLatitude(data.location.latitude)
+            setLongitude(data.location?.longitude ?? "")
+            setLatitude(data.location?.latitude ?? "")
+            setLud16(data.lud16 || "")
         })
     }, [])
 
@@ -128,6 +130,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             try {
                 await nodeService.postEvent(event)
                 await storageService.set(StoredKey.PROFILE, profileWithCurrency)
+                setProfile(profileWithCurrency)
                 Toast.show({
                     type: "success",
                     text1: "Currency updated",
@@ -140,6 +143,31 @@ export const ProfileScreen = ({ navigation }: any) => {
                 type: "error",
                 text1: e,
             })
+        })
+    }
+
+    function handleUpdateLud16() {
+        const trimmed = lud16.trim()
+        if (trimmed && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
+            Toast.show({
+                type: "error",
+                text1: "Invalid Lightning Address (user@domain)",
+            })
+            return
+        }
+        const profileWithLud16 = { ...profile, lud16: trimmed }
+        storageService.get(StoredKey.NSEC).then(async nsec => {
+            const profileUpdateEvent = nostrService.signNostrEvent(nsec, 0, [], profileWithLud16)
+            const event = nostrService.signNostrliveryEvent(nsec, "PUBLISH_EVENT", { event: profileUpdateEvent })
+            try {
+                await nodeService.postEvent(event)
+                await storageService.set(StoredKey.PROFILE, profileWithLud16)
+                setProfile(profileWithLud16)
+                Toast.show({ type: "success", text1: "Lightning Address updated" })
+            } catch (e) {
+                console.log(e)
+                Toast.show({ type: "error", text1: "Failed to update lud16" })
+            }
         })
     }
 
@@ -227,6 +255,21 @@ export const ProfileScreen = ({ navigation }: any) => {
                     ]}
                     emptyMessage={"Select your currency"}
                     callback={handleUpdateCurrency}
+                />
+            </View>
+            <View>
+                <Text style={{ fontSize: 16 }}>Lightning Address (lud16)</Text>
+                <TextInput
+                    style={styles.input}
+                    autoCapitalize="none"
+                    value={lud16}
+                    onChangeText={setLud16}
+                    placeholder="you@wallet.com"
+                />
+                <ActionButton
+                    title={"Update Lightning Address"}
+                    color={"purple"}
+                    onPress={handleUpdateLud16}
                 />
             </View>
             <View>

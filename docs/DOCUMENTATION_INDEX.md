@@ -44,6 +44,13 @@ This directory contains comprehensive documentation for the Driver Association f
 - Migration from hardcoded values
 - **Audience**: DevOps, system administrators, developers
 
+### 6. [ORDER_PROTOCOL.md](./ORDER_PROTOCOL.md)
+**Order lifecycle + Lightning**
+- Kind 31200 order events
+- Status transitions and vertical-slice smoke checklist
+- LNURL-pay / lud16 payment flow
+- **Audience**: Developers implementing orders and payments
+
 ## 🎯 Documentation by Use Case
 
 ### Getting Started

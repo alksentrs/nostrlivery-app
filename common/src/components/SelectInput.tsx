@@ -3,32 +3,44 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import SelectDropdown from "react-native-select-dropdown"
 import React from "react"
 
-interface Props {
-    data: Array<{ label: string, value: string }>
-    emptyMessage: string
-    callback: (value: string) => void
+interface SelectOption {
+    label: string
+    value: string
 }
 
-export const SelectInput = ({ data, emptyMessage, callback }: Props) => {
+interface Props {
+    data: Array<SelectOption>
+    emptyMessage: string
+    callback: (value: string) => void
+    defaultValue?: SelectOption
+}
+
+export const SelectInput = ({ data, emptyMessage, callback, defaultValue }: Props) => {
     return (
-        <SelectDropdown data={data} onSelect={(selectedItem, index) => {
-            callback(selectedItem.value)
-        }} renderButton={(selectedItem, isOpened) => {
-            return (
-                <View style={styles.dropdownButtonStyle}>
-                    <Text style={styles.dropdownButtonTxtStyle}>
-                        {(selectedItem?.label) || emptyMessage}
-                    </Text>
-                    <MaterialCommunityIcons name={isOpened ? 'chevron-up' : 'chevron-down'} size={20} />
-                </View>
-            )
-        }} renderItem={(item, index, isSelected) => {
-            return (
-                <View style={{...styles.dropdownItemStyle, ...(isSelected && {backgroundColor: '#D2D9DF'})}}>
-                    <Text style={styles.dropdownItemTxtStyle}>{item.label}</Text>
-                </View>
-            )
-        }}></SelectDropdown>
+        <SelectDropdown
+            data={data}
+            defaultValue={defaultValue}
+            onSelect={(selectedItem) => {
+                callback(selectedItem.value)
+            }}
+            renderButton={(selectedItem, isOpened) => {
+                return (
+                    <View style={styles.dropdownButtonStyle}>
+                        <Text style={styles.dropdownButtonTxtStyle}>
+                            {(selectedItem?.label) || emptyMessage}
+                        </Text>
+                        <MaterialCommunityIcons name={isOpened ? 'chevron-up' : 'chevron-down'} size={20} />
+                    </View>
+                )
+            }}
+            renderItem={(item, _index, isSelected) => {
+                return (
+                    <View style={{...styles.dropdownItemStyle, ...(isSelected && {backgroundColor: '#D2D9DF'})}}>
+                        <Text style={styles.dropdownItemTxtStyle}>{item.label}</Text>
+                    </View>
+                )
+            }}
+        />
     )
 }
 

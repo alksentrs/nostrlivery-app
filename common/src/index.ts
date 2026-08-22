@@ -6,8 +6,34 @@ export {ArrayUtils} from './util/arrayUtils'
 export {NodeService} from './service/NodeService'
 export {NostrService} from './service/NostrService'
 export {StorageService, StoredKey} from './service/StorageService'
+export {OrderService} from './service/OrderService'
+export {LightningService, totalToMsats} from './service/LightningService'
+export type {LightningInvoice, LnurlPayRequest} from './service/LightningService'
 
 export {NostrEvent} from './model/NostrEvent'
+export {
+  createOrder,
+  transitionOrder,
+  canTransition,
+  parseOrderContent,
+  mergeOrdersById,
+  computeOrderTotal,
+  ORDER_TAG,
+  ORDER_TRANSITIONS,
+} from './model/Order'
+export type {
+  Order,
+  OrderStatus,
+  OrderItem,
+  OrderPayment,
+  CreateOrderInput,
+} from './model/Order'
+export {
+  normalizeMenu,
+  normalizeMenuItem,
+  toLegacyMenuItem,
+} from './model/MenuItem'
+export type {MenuItem} from './model/MenuItem'
 
 export {ActionButton} from './components/ActionButton'
 export {FormTextInput} from './components/FormTextInput'

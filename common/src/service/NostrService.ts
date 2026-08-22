@@ -91,7 +91,11 @@ export class NostrService {
                                 name: profileData.name || profileData.display_name || "Unknown",
                                 about: profileData.about || profileData.bio || "",
                                 picture: profileData.picture || profileData.avatar || "",
-                                display_name: profileData.display_name || profileData.name || "Unknown"
+                                display_name: profileData.display_name || profileData.name || "Unknown",
+                                lud16: profileData.lud16 || "",
+                                currency: profileData.currency || "",
+                                location: profileData.location,
+                                payment_rate: profileData.payment_rate,
                             })
                         } catch (parseError) {
                             console.error("Error parsing profile data:", parseError)

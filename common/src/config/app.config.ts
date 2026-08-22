@@ -16,11 +16,11 @@ export interface AppConfig {
 // Default configuration
 const defaultConfig: AppConfig = {
   relay: {
-    url: "ws://127.0.0.1:7000",
+    url: "ws://192.168.1.115:7000",
     timeout: 10000,
   },
   node: {
-    url: "http://127.0.0.1:3000",
+    url: "http://192.168.1.115:3000",
     timeout: 5000,
   },
   events: {

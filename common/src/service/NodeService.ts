@@ -14,21 +14,35 @@ export class NodeService {
     readonly utf8Encoder: TextEncoder = new TextEncoder()
 
     async getNodeIdentity(nodeUrl: string) {
-        const response = await fetch(nodeUrl + '/identity', {
-            method: 'GET',
-            headers: {
-                Accept: 'text/plain',
-                'Content-Type': 'text/plain',
-            }
-        })
+        const controller = new AbortController()
+        const timeoutMs = 8000
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-        if (response.ok) {
-            const nodeNpub = await response.text()
-            await this.storageService.set(StoredKey.NODE_NPUB, nodeNpub)
-            await this.storageService.set(StoredKey.NODE_URL, nodeUrl)
-            return true
-        } else {
-            throw 'Invalid node url'
+        try {
+            const response = await fetch(nodeUrl + '/identity', {
+                method: 'GET',
+                headers: {
+                    Accept: 'text/plain',
+                    'Content-Type': 'text/plain',
+                },
+                signal: controller.signal,
+            })
+
+            if (response.ok) {
+                const nodeNpub = await response.text()
+                await this.storageService.set(StoredKey.NODE_NPUB, nodeNpub)
+                await this.storageService.set(StoredKey.NODE_URL, nodeUrl)
+                return true
+            }
+
+            throw new Error('Invalid node url')
+        } catch (error: any) {
+            if (error?.name === 'AbortError') {
+                throw new Error(`Timed out connecting to ${nodeUrl}`)
+            }
+            throw new Error(error?.message || `Failed to connect to ${nodeUrl}`)
+        } finally {
+            clearTimeout(timeoutId)
         }
     }
 

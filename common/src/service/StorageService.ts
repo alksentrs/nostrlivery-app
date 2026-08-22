@@ -6,7 +6,8 @@ export enum StoredKey {
     NSEC = "nsec",
     NODE_NPUB = "nodeNpub",
     NODE_URL = "nodeUrl",
-    MENU = "menu"
+    MENU = "menu",
+    CART = "cart",
 }
 
 export class StorageService {
@@ -18,9 +19,13 @@ export class StorageService {
     }
 
     async get(key: StoredKey) {
-        return await storage.load({
-            key
-        })
+        try {
+            return await storage.load({
+                key
+            })
+        } catch {
+            return null
+        }
     }
 
     async remove(key: StoredKey) {

@@ -1,10 +1,11 @@
 # Nostrlivery Monorepo
 
-This workspace contains three packages:
+This workspace contains four packages:
 
 - `common`: Shared React Native components, screens, services, and utilities packaged as `@odevlibertario/nostrlivery-common`.
 - `company`: Expo app for company users.
 - `driver`: Expo app for drivers.
+- `customer`: Expo app for customers (browse menu, Lightning checkout, orders).
 
 ## Prerequisites
 
@@ -28,6 +29,10 @@ npm ci --ignore-scripts
 # driver
 cd ../driver
 npm ci --ignore-scripts
+
+# customer
+cd ../customer
+npm ci --ignore-scripts
 ```
 
 2) Build and pack the shared library:
@@ -48,6 +53,10 @@ npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 
 # company
 cd ../company
+npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
+
+# customer
+cd ../customer
 npm i --legacy-peer-deps ../common/odevlibertario-nostrlivery-common-*.tgz
 ```
 

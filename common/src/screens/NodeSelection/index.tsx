@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import Toast from "react-native-toast-message"
 import { NodeService } from "../../service/NodeService"
@@ -8,13 +8,34 @@ import { ActionButton } from "../../components/ActionButton"
 import { nodeConfig } from "../../config/app.config"
 
 export const NodeSelectionScreen = ({ navigation }: any) => {
+    const nodeOptions = [
+        { label: `Node Server (${nodeConfig.url})`, value: nodeConfig.url },
+    ]
     const [nodeUrl, onChangeNodeUrl] = useState(nodeConfig.url)
     const [isFetchingIdentity, setIsFetchingIdentity] = useState(false)
 
     const nodeService = new NodeService()
     const storageService = new StorageService()
 
-    const selectNode = () => {
+    useEffect(() => {
+        let cancelled = false
+
+        storageService
+            .get(StoredKey.NODE_URL)
+            .then(async (storedUrl) => {
+                const nodeNpub = await storageService.get(StoredKey.NODE_NPUB)
+                if (!cancelled && nodeNpub && storedUrl === nodeConfig.url) {
+                    navigation.replace("Login")
+                }
+            })
+            .catch(() => undefined)
+
+        return () => {
+            cancelled = true
+        }
+    }, [navigation])
+
+    const selectNode = async () => {
         if (!nodeUrl || nodeUrl.trim() === "") {
             Toast.show({
                 type: "error",
@@ -24,28 +45,18 @@ export const NodeSelectionScreen = ({ navigation }: any) => {
         }
 
         setIsFetchingIdentity(true)
-        nodeService
-            .getNodeIdentity(nodeUrl)
-            .then(() => navigation.navigate("Login"))
-            .catch((e) => {
-                Toast.show({
-                    type: "error",
-                    text1: e.message || "Failed to connect to node server",
-                })
+        try {
+            await nodeService.getNodeIdentity(nodeUrl)
+            navigation.replace("Login")
+        } catch (e: any) {
+            Toast.show({
+                type: "error",
+                text1: e?.message || "Failed to connect to node server",
             })
-            .finally(() => {
-                setIsFetchingIdentity(false)
-            })
+        } finally {
+            setIsFetchingIdentity(false)
+        }
     }
-
-    storageService
-        .areValuesPresent(StoredKey.NODE_NPUB, StoredKey.NODE_URL)
-        .then((result) => {
-            if (result) {
-                navigation.navigate("Login")
-            }
-        })
-        .catch((e) => e)
 
     return (
         <View style={styles.container}>
@@ -53,10 +64,11 @@ export const NodeSelectionScreen = ({ navigation }: any) => {
                 Node Selection
             </Text>
             <SelectInput
-                data={[{ label: `Node Server (${nodeConfig.url})`, value: nodeConfig.url }]}
+                data={nodeOptions}
+                defaultValue={nodeOptions[0]}
                 emptyMessage={"Select your node"}
                 callback={onChangeNodeUrl}
-            ></SelectInput>
+            />
             <ActionButton
                 title={"Enter"}
                 color={"purple"}

@@ -8,6 +8,7 @@ import { ProfileScreen } from "@screens/Profile"
 import { MenuItem } from "@screens/MenuItem"
 import { AssociatedDriversScreen } from "@screens/AssociatedDrivers"
 import { DriverPreviewScreen } from "@screens/DriverPreview"
+import { OrdersScreen } from "@screens/Orders"
 
 const { Navigator, Screen } = createBottomTabNavigator()
 
@@ -48,7 +49,7 @@ export function HomeRoutes() {
             />
             <Screen
                 name="Orders"
-                component={HomeScreen}
+                component={OrdersScreen}
                 options={{
                     tabBarIcon: ({ color, size }) => (
                         <MaterialCommunityIcons name="cart" color={color} size={size} />
