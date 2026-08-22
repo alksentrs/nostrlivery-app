@@ -1,144 +1,347 @@
-import React, {useEffect} from "react"
-import {View} from "react-native"
-import {useForm} from "react-hook-form"
+import React, { useCallback, useEffect, useState } from "react"
+import {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native"
+import { Chip, TextInput } from "react-native-paper"
+import { useController, useForm } from "react-hook-form"
 import Toast from "react-native-toast-message"
-import {StorageService, NodeService, NostrService, StoredKey, NavigationUtils, ValidationUtils, FormTextInput, ActionButton} from "@odevlibertario/nostrlivery-common"
-import {getPublicKey, nip19} from "nostr-tools"
+import { useFocusEffect } from "@react-navigation/native"
+import { ActionButton } from "@odevlibertario/nostrlivery-common"
+import { fetchMenuOrCache, publishMenu, splitCategories } from "@util/menu"
 
-const storageService = new StorageService()
-const nostrService = new NostrService()
-const nodeService = new NodeService()
+type FormValues = {
+    name: string
+    description: string
+    price: string
+    imageUrl: string
+}
 
-// TODO Create and apply a model for menuItem, today it's taking the form labels as object attributes which is ugly like 'IMAGE URL'should be imageUrl
-// TODO extract the logic out of the tsx file
-export const MenuItem = ({route, navigation}: any) => {
-    const {isNavigation} = NavigationUtils.useFocus()
+const Field = ({
+    name,
+    label,
+    control,
+    rules,
+    keyboardType,
+    autoCapitalize,
+}: {
+    name: keyof FormValues
+    label: string
+    control: any
+    rules?: object
+    keyboardType?: "default" | "decimal-pad" | "url"
+    autoCapitalize?: "none" | "sentences"
+}) => {
+    const { field, fieldState } = useController({
+        name,
+        control,
+        rules,
+        defaultValue: "",
+    })
+    return (
+        <View style={styles.field}>
+            <TextInput
+                label={label}
+                value={field.value}
+                onChangeText={field.onChange}
+                error={!!fieldState.error}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+                mode="outlined"
+            />
+            {fieldState.error?.message ? (
+                <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+        </View>
+    )
+}
 
-    function isUpdate() {
-        return route?.params?.index !== undefined
-    }
+export const MenuItem = ({ route, navigation }: any) => {
+    const editIndex: number | undefined =
+        typeof route?.params?.index === "number" ? route.params.index : undefined
+    const isUpdate = editIndex !== undefined
+    const [categoryInput, setCategoryInput] = useState("")
+    const [categories, setCategories] = useState<string[]>([])
+    const [categoryError, setCategoryError] = useState("")
+    const [isSaving, setIsSaving] = useState(false)
 
-    useEffect(() => {
-        // Is coming from navigation
-        if (isNavigation && isUpdate()) {
-
-            storageService.get(StoredKey.NSEC).then(nsec => {
-                nodeService.queryEvent({
-                    kinds: [30000],
-                    authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-                }).then(menu => {
-                    const menuItem = menu[route.params.index]
-
-                    form.setValue("Name", menuItem["Name"])
-                    form.setValue("Description", menuItem["Description"])
-                    form.setValue("Price", menuItem["Price"])
-                    form.setValue("Image URL", menuItem["Image URL"])
-                    form.setValue("Categories", menuItem["Categories"])
-                    storageService.set(StoredKey.MENU, menu).then()
-                })
-            })
-        }
+    const form = useForm<FormValues>({
+        defaultValues: {
+            name: "",
+            description: "",
+            price: "",
+            imageUrl: "",
+        },
     })
 
-    const form = useForm()
+    useEffect(() => {
+        if (!isUpdate) {
+            return
+        }
 
-    const addItem = async (menuItem: any) => {
-        const nsec = await storageService.get(StoredKey.NSEC)
-        let menu = await nodeService.queryEvent({
-            kinds: [30000],
-            authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
+        const loadItem = async () => {
+            try {
+                const menu = await fetchMenuOrCache()
+                const item = menu[editIndex]
+                if (!item) {
+                    Toast.show({ type: "error", text1: "Item not found" })
+                    navigation.navigate("Menu")
+                    return
+                }
+                form.setValue("name", item.name)
+                form.setValue("description", item.description)
+                form.setValue("price", String(item.price ?? ""))
+                form.setValue("imageUrl", item.imageUrl ?? "")
+                setCategories(splitCategories(item.categories))
+            } catch (error) {
+                console.log(error)
+                Toast.show({ type: "error", text1: "Failed to load item" })
+            }
+        }
+
+        loadItem()
+    }, [editIndex, isUpdate])
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!isUpdate) {
+                form.reset()
+                setCategories([])
+                setCategoryInput("")
+                setCategoryError("")
+            }
+        }, [isUpdate])
+    )
+
+    const addCategories = () => {
+        const next = splitCategories(categoryInput)
+        if (!next.length) {
+            return
+        }
+        setCategories((current) => {
+            const merged = [...current]
+            next.forEach((category) => {
+                if (!merged.some((existing) => existing.toLowerCase() === category.toLowerCase())) {
+                    merged.push(category)
+                }
+            })
+            return merged
         })
+        setCategoryInput("")
+        setCategoryError("")
+    }
 
-        let menuUpdateEvent
-        if (ValidationUtils.isEmpty(menu)) {
-            menu = [menuItem]
-        } else {
-            menu = menu.concat(menuItem)
+    const removeCategory = (category: string) => {
+        setCategories((current) => current.filter((item) => item !== category))
+    }
+
+    const save = async (values: FormValues) => {
+        const allCategories = [...categories]
+        splitCategories(categoryInput).forEach((category) => {
+            if (!allCategories.some((existing) => existing.toLowerCase() === category.toLowerCase())) {
+                allCategories.push(category)
+            }
+        })
+        if (!allCategories.length) {
+            setCategoryError("Add at least one category")
+            return
         }
+        setCategories(allCategories)
+        setCategoryInput("")
 
+        setIsSaving(true)
         try {
-            menuUpdateEvent = nostrService.signNostrEvent(nsec, 30000, [["n", "menu"]], menu)
-            const event = nostrService.signNostrliveryEvent(nsec, "PUBLISH_EVENT", {event: menuUpdateEvent})
-            await nodeService.postEvent(event)
-            await storageService.set(StoredKey.MENU, menu)
+            const menu = await fetchMenuOrCache()
+            const item = {
+                name: values.name.trim(),
+                description: values.description.trim(),
+                price: values.price.trim().replace(",", "."),
+                imageUrl: values.imageUrl.trim(),
+                categories: allCategories.join(", "),
+            }
+
+            const next = isUpdate
+                ? menu.map((existing, index) => (index === editIndex ? item : existing))
+                : [...menu, item]
+
+            await publishMenu(next)
             form.reset()
+            setCategories([])
             Toast.show({
                 type: "success",
-                text1: "Item added",
+                text1: isUpdate ? "Item updated" : "Item added",
             })
             navigation.navigate("Menu")
-
-        } catch (e) {
+        } catch (error) {
+            console.log(error)
             Toast.show({
                 type: "error",
-                text1: "Error:" + JSON.stringify(e),
+                text1: isUpdate ? "Failed to update item" : "Failed to add item",
             })
-            console.log(e)
+        } finally {
+            setIsSaving(false)
         }
     }
 
-    const updateItem = async (menuItem: any) => {
-        const nsec = await storageService.get(StoredKey.NSEC)
-        const menu = await storageService.get(StoredKey.MENU)
+    return (
+        <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+            <ScrollView contentContainerStyle={styles.container}>
+                <Field
+                    name="name"
+                    label="Name"
+                    control={form.control}
+                    rules={{ required: "Name is required" }}
+                />
+                <Field
+                    name="description"
+                    label="Description"
+                    control={form.control}
+                    rules={{ required: "Description is required" }}
+                />
+                <Field
+                    name="price"
+                    label="Price"
+                    control={form.control}
+                    keyboardType="decimal-pad"
+                    rules={{
+                        required: "Price is required",
+                        pattern: {
+                            value: /^\d+([.,]\d{1,2})?$/,
+                            message: "Enter a valid price, e.g. 10.50",
+                        },
+                    }}
+                />
+                <Field
+                    name="imageUrl"
+                    label="Image URL"
+                    control={form.control}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    rules={{
+                        validate: (value: string) =>
+                            !value ||
+                            /^https?:\/\/.+/i.test(value) ||
+                            "Enter a valid http(s) URL",
+                    }}
+                />
 
-        menu[route.params.index] = menuItem
+                <View style={styles.field}>
+                    <TextInput
+                        label="Categories"
+                        value={categoryInput}
+                        onChangeText={(text) => {
+                            setCategoryInput(text)
+                            if (categoryError) {
+                                setCategoryError("")
+                            }
+                        }}
+                        onSubmitEditing={addCategories}
+                        mode="outlined"
+                        placeholder="Type a category and press Add"
+                        error={!!categoryError}
+                    />
+                    {categoryError ? (
+                        <Text style={styles.errorText}>{categoryError}</Text>
+                    ) : (
+                        <Text style={styles.hint}>
+                            Add one or more categories. Separate with commas or tap Add.
+                        </Text>
+                    )}
+                    <ActionButton
+                        title="Add category"
+                        color="purple"
+                        onPress={addCategories}
+                        customStyle={styles.addCategoryButton}
+                    />
+                    <View style={styles.chipRow}>
+                        {categories.map((category) => (
+                            <Chip
+                                key={category}
+                                onClose={() => removeCategory(category)}
+                                style={styles.chip}
+                            >
+                                {category}
+                            </Chip>
+                        ))}
+                    </View>
+                </View>
 
-        try {
-            const menuUpdateEvent = nostrService.signNostrEvent(nsec, 30000, [["n", "menu"]], menu)
-            const event = nostrService.signNostrliveryEvent(nsec, "PUBLISH_EVENT", {event: menuUpdateEvent})
-            await nodeService.postEvent(event)
-            await storageService.set(StoredKey.MENU, menu)
-            form.reset()
-            Toast.show({
-                type: "success",
-                text1: "Item updated",
-            })
-            navigation.navigate("Menu")
-
-        } catch (e) {
-            Toast.show({
-                type: "error",
-                text1: "Error:" + JSON.stringify(e),
-            })
-            console.log(e)
-        }
-    }
-
-    const cancel = async () => {
-        form.reset()
-        navigation.navigate("Menu")
-    }
-
-    return <View style={{margin: '2%'}}>
-        <FormTextInput
-            label="Name"
-            control={form.control}
-            rules={{minLength: 1, required: true}}
-        />
-        <FormTextInput
-            label="Description"
-            control={form.control}
-            rules={{minLength: 1, required: true}}
-        />
-        <FormTextInput
-            label="Price"
-            control={form.control}
-            rules={{minLength: 1, required: true, pattern: /\d+(,\d{1,2})?/}}
-        />
-        {/* TODO allow image upload from gallery */}
-        <FormTextInput
-            label="Image URL"
-            control={form.control}
-            rules={{pattern: /\bhttps?:\/\/\S+?\.(?:png|jpe?g|gif|bmp)\b/}}
-        />
-        {/* TODO This needs to be a list input where the user presses enter and it adds to a list */}
-        <FormTextInput
-            label="Categories"
-            control={form.control}
-            rules={{minLength: 1, required: true, pattern: /(?:\s*\w+\s*(?:,\s*\w+\s*)*)?/}}
-        />
-
-        <ActionButton title={isUpdate() ? "Update" : "Save"} color={"purple"} onPress={isUpdate() ? form.handleSubmit(updateItem) : form.handleSubmit(addItem)} customStyle={{margin: '2%'}}/>
-        <ActionButton title={"Cancel"} color={"red"} onPress={cancel} customStyle={{margin: '2%'}}/>
-    </View>
+                <ActionButton
+                    title={isUpdate ? "Update" : "Save"}
+                    color="purple"
+                    isLoading={isSaving}
+                    disabled={isSaving}
+                    onPress={form.handleSubmit(save, () => {
+                        if (!categories.length && !splitCategories(categoryInput).length) {
+                            setCategoryError("Add at least one category")
+                        }
+                        Toast.show({
+                            type: "error",
+                            text1: "Please fill the required fields",
+                        })
+                    })}
+                    customStyle={styles.button}
+                />
+                <ActionButton
+                    title="Cancel"
+                    color="red"
+                    disabled={isSaving}
+                    onPress={() => {
+                        form.reset()
+                        navigation.navigate("Menu")
+                    }}
+                    customStyle={styles.button}
+                />
+            </ScrollView>
+        </KeyboardAvoidingView>
+    )
 }
+
+const styles = StyleSheet.create({
+    flex: {
+        flex: 1,
+        backgroundColor: "#f5f5f5",
+    },
+    container: {
+        padding: 16,
+        paddingBottom: 40,
+    },
+    field: {
+        marginBottom: 12,
+    },
+    errorText: {
+        color: "#d32f2f",
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    hint: {
+        color: "#666",
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    addCategoryButton: {
+        marginTop: 8,
+    },
+    chipRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 8,
+    },
+    chip: {
+        marginRight: 4,
+        marginBottom: 4,
+    },
+    button: {
+        marginVertical: 6,
+    },
+})

@@ -1,97 +1,145 @@
-import React, {useEffect, useReducer, useState} from "react"
-import {Alert, Image, TouchableOpacity, View} from "react-native"
-import {StorageService, NodeService, NostrService, StoredKey, NavigationUtils, ArrayUtils, ActionButton} from "@odevlibertario/nostrlivery-common"
-import {List} from "react-native-paper"
-import {getPublicKey, nip19} from "nostr-tools"
+import React, { useCallback, useState } from "react"
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { List } from "react-native-paper"
+import { useFocusEffect } from "@react-navigation/native"
+import {
+    ActionButton,
+    MenuItem as MenuItemModel,
+    StorageService,
+    StoredKey,
+} from "@odevlibertario/nostrlivery-common"
+import { fetchMenuOrCache, publishMenu, splitCategories } from "@util/menu"
 
-export const MenuScreen = ({navigation}: any) => {
+export const MenuScreen = ({ navigation }: any) => {
     const storageService = new StorageService()
-    const nostrService = new NostrService()
-    const nodeService = new NodeService()
-    const [menu, setMenu] = useState<any>([])
-    const {isNavigation} = NavigationUtils.useFocus()
-    const [, forceUpdate] = useReducer(x => x + 1, 0)
+    const [menu, setMenu] = useState<MenuItemModel[]>([])
 
-    const removeAlert = async (name: string, index: number) => {
-        Alert.alert('Remove Item', 'Are you sure you want to remove the item ' + name + '?', [
-            {
-                text: 'Cancel',
-                style: 'cancel',
-            },
-            {text: 'OK', onPress: () => remove(index)},
+    const loadMenu = useCallback(async () => {
+        try {
+            const items = await fetchMenuOrCache()
+            setMenu(items)
+            await storageService.set(StoredKey.MENU, items)
+        } catch (error) {
+            console.log(error)
+        }
+    }, [])
+
+    useFocusEffect(
+        useCallback(() => {
+            loadMenu()
+        }, [loadMenu])
+    )
+
+    const removeAlert = (name: string, index: number) => {
+        Alert.alert("Remove Item", `Are you sure you want to remove the item ${name}?`, [
+            { text: "Cancel", style: "cancel" },
+            { text: "OK", onPress: () => remove(index) },
         ])
     }
 
     const remove = async (index: number) => {
-        if (index > -1) {
-            menu.splice(index, 1)
+        try {
+            const next = menu.filter((_, itemIndex) => itemIndex !== index)
+            const published = await publishMenu(next)
+            setMenu(published)
+        } catch (error) {
+            console.log(error)
+            Alert.alert("Error", "Failed to remove item")
         }
-        const nsec = await storageService.get(StoredKey.NSEC)
-        const menuUpdateEvent = nostrService.signNostrEvent(nsec, 30000, [["n", "menu"]], menu)
-        const event = nostrService.signNostrliveryEvent(nsec, "PUBLISH_EVENT", {event: menuUpdateEvent})
-        await nodeService.postEvent(event)
-        await storageService.set(StoredKey.MENU, menu)
-        setMenu(menu)
-        forceUpdate()
     }
 
-    const edit = async (index: number) => {
-        navigation.navigate("Menu Item", {index})
-    }
-
-    useEffect(() => {
-        const nsec = storageService.get(StoredKey.NSEC).then(nsec => {
-            nodeService.queryEvent({
-                kinds: [30000],
-                authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-            }).then(menu => {
-                // TODO setting index here is bad, find a better way to set an id for the item
-                menu.forEach((i: any, index: number) => i.index = index)
-                setMenu(menu)
-                storageService.set(StoredKey.MENU, menu).then()
-            })
+    const grouped = menu.reduce<Record<string, MenuItemModel[]>>((groups, item) => {
+        const categories = splitCategories(item.categories)
+        const keys = categories.length ? categories : ["Uncategorized"]
+        keys.forEach((category) => {
+            groups[category] = groups[category] || []
+            groups[category].push(item)
         })
-    }, [])
-
-    useEffect(() => {
-        if (isNavigation) {
-            storageService.get(StoredKey.MENU).then((menu) => {
-                // TODO setting index here is bad, find a better way to set an id for the item
-                menu.forEach((i: any, index: number) => i.index = index)
-                setMenu(menu)
-            })
-        }
-    })
-
-    const categories = ArrayUtils.groupBy(menu, "Categories")
+        return groups
+    }, {})
 
     return (
-        <View style={{margin: '2%'}}>
-            {menu && <List.Section>
-                {Object.keys(categories).map((category: string) =>
-                    <>
-                        <List.Subheader>{category}</List.Subheader>
-                        {categories[category].map((i: any) =>
-                            <List.Item
-                                key={i.index}
-                                title={i["Name"] + " - " + i["Price"]} description={i["Description"]}
-                                left={() => <Image style={{width: 60, height: 60}} source={{uri: i["Image URL"]}}></Image>}
-                                right={() =>
-                                    <>
-                                        <TouchableOpacity style={{marginRight: '2%'}} onPress={() => edit(i.index)}>
-                                            <List.Icon icon="pencil"/>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={() => removeAlert(i["Name"], i.index)}>
-                                            <List.Icon icon="delete"/>
-                                        </TouchableOpacity>
-                                    </>}
-                            />
-                        )}
-                    </>
+        <View style={styles.container}>
+            <ScrollView contentContainerStyle={styles.listContent}>
+                {menu.length === 0 ? (
+                    <Text style={styles.empty}>No menu items yet. Add one below.</Text>
+                ) : (
+                    <List.Section>
+                        {Object.keys(grouped).map((category) => (
+                            <View key={category}>
+                                <List.Subheader>{category}</List.Subheader>
+                                {grouped[category].map((item) => (
+                                    <List.Item
+                                        key={`${category}-${item.index}-${item.name}`}
+                                        title={`${item.name} - ${item.price}`}
+                                        description={item.description}
+                                        left={() =>
+                                            item.imageUrl ? (
+                                                <Image
+                                                    style={styles.thumb}
+                                                    source={{ uri: item.imageUrl }}
+                                                />
+                                            ) : (
+                                                <List.Icon icon="food" />
+                                            )
+                                        }
+                                        right={() => (
+                                            <>
+                                                <TouchableOpacity
+                                                    style={styles.iconButton}
+                                                    onPress={() =>
+                                                        navigation.navigate("Menu Item", {
+                                                            index: item.index,
+                                                        })
+                                                    }
+                                                >
+                                                    <List.Icon icon="pencil" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() =>
+                                                        removeAlert(item.name, item.index ?? -1)
+                                                    }
+                                                >
+                                                    <List.Icon icon="delete" />
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                    />
+                                ))}
+                            </View>
+                        ))}
+                    </List.Section>
                 )}
-            </List.Section>}
-
-            <ActionButton title={"Add Item"} color={"purple"} onPress={() => navigation.navigate("Menu Item")}/>
+            </ScrollView>
+            <ActionButton
+                title="Add Item"
+                color="purple"
+                onPress={() => navigation.navigate("Menu Item", { index: undefined })}
+            />
         </View>
     )
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        margin: "2%",
+    },
+    listContent: {
+        paddingBottom: 16,
+    },
+    empty: {
+        textAlign: "center",
+        color: "#666",
+        marginTop: 40,
+        marginBottom: 20,
+    },
+    thumb: {
+        width: 60,
+        height: 60,
+        borderRadius: 6,
+    },
+    iconButton: {
+        marginRight: "2%",
+    },
+})

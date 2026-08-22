@@ -14,14 +14,20 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.nostrliverycustomer"
+      "bundleIdentifier": "com.anonymous.nostrliverycustomer",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to your camera to scan company QR codes."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.nostrliverycustomer"
+      "package": "com.anonymous.nostrliverycustomer",
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "favicon": "./src/assets/favicon.png"
@@ -34,6 +40,12 @@
             "node_modules/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf",
             "node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"
           ]
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan company QR codes."
         }
       ]
     ]
