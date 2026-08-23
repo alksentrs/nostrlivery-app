@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import {
   ActionButton,
   computeOrderTotal,
+  formatLightningAmountPreview,
   StorageService,
   StoredKey,
 } from "@odevlibertario/nostrlivery-common"
@@ -18,6 +19,19 @@ export const CartScreen = ({ navigation }: any) => {
     }, [])
   )
 
+  const total = cart?.items?.length ? computeOrderTotal(cart.items) : "0"
+  const currency = (cart?.currency || "BTC").toUpperCase()
+  const lightningLabel = useMemo(() => {
+    if (!cart?.items?.length || currency !== "BTC") {
+      return null
+    }
+    try {
+      return formatLightningAmountPreview(total, "BTC").label
+    } catch {
+      return null
+    }
+  }, [cart, total, currency])
+
   if (!cart?.items?.length) {
     return (
       <View style={styles.container}>
@@ -30,8 +44,6 @@ export const CartScreen = ({ navigation }: any) => {
       </View>
     )
   }
-
-  const total = computeOrderTotal(cart.items)
 
   async function changeQty(name: string, delta: number) {
     const items = cart.items
@@ -54,7 +66,7 @@ export const CartScreen = ({ navigation }: any) => {
               {item.name} × {item.qty}
             </Text>
             <Text>
-              {item.price} {cart.currency || ""}
+              {item.price} {currency}
             </Text>
           </View>
           <TouchableOpacity onPress={() => changeQty(item.name, -1)}>
@@ -66,12 +78,21 @@ export const CartScreen = ({ navigation }: any) => {
         </View>
       ))}
       <Text style={styles.total}>
-        Total: {total} {cart.currency || ""}
+        Total: {total} {currency}
       </Text>
+      {lightningLabel ? (
+        <Text style={styles.sats}>{lightningLabel}</Text>
+      ) : (
+        <Text style={styles.warn}>
+          Lightning checkout requires company currency BTC. Ask the merchant to
+          set currency to BTC.
+        </Text>
+      )}
       <ActionButton
         title="Checkout"
         color="purple"
         onPress={() => navigation.navigate("Checkout")}
+        disabled={currency !== "BTC"}
       />
       <ActionButton
         title="Back to menu"
@@ -99,5 +120,7 @@ const styles = StyleSheet.create({
   },
   name: { fontWeight: "600" },
   qtyBtn: { fontSize: 24, paddingHorizontal: 10, color: "#2f1650" },
-  total: { fontSize: 18, fontWeight: "bold", marginVertical: 16 },
+  total: { fontSize: 18, fontWeight: "bold", marginTop: 16 },
+  sats: { fontSize: 14, color: "#2f1650", marginBottom: 12 },
+  warn: { color: "#a60", marginBottom: 12, fontSize: 13 },
 })

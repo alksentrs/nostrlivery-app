@@ -1,6 +1,7 @@
 /**
  * LNURL-pay / Lightning Address helpers.
  * Resolves user@domain → invoice (BOLT11).
+ * Lightning checkout requires company currency BTC (total interpreted as BTC).
  */
 
 export type LnurlPayRequest = {
@@ -41,21 +42,35 @@ async function fetchJson(url: string): Promise<any> {
   return response.json()
 }
 
-/**
- * Convert order total + currency into millisatoshis for LNURL-pay.
- * - BTC: total is BTC amount
- * - otherwise: total is treated as sats (MVP; use BTC currency for precise amounts)
- */
+/** Convert BTC total string into millisatoshis. Rejects non-BTC currencies. */
 export function totalToMsats(total: string, currency: string): number {
+  if (currency.toUpperCase() !== "BTC") {
+    throw new Error(
+      "Lightning checkout requires company currency BTC (set currency to BTC on company profile)"
+    )
+  }
   const value = parseFloat(String(total).replace(",", "."))
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error("Invalid payment amount")
   }
-  if (currency.toUpperCase() === "BTC") {
-    return Math.round(value * 100_000_000_000)
+  return Math.round(value * 100_000_000_000)
+}
+
+export function msatsToSats(msats: number): number {
+  return Math.floor(msats / 1000)
+}
+
+export function formatLightningAmountPreview(
+  total: string,
+  currency: string
+): { msats: number; sats: number; label: string } {
+  const msats = totalToMsats(total, currency)
+  const sats = msatsToSats(msats)
+  return {
+    msats,
+    sats,
+    label: `Lightning: ${sats.toLocaleString()} sats (${msats.toLocaleString()} msats)`,
   }
-  // Treat non-BTC totals as sats for Lightning MVP demos
-  return Math.round(value * 1000)
 }
 
 export class LightningService {

@@ -1,41 +1,45 @@
-/**
- * Quick sanity check for order transition helpers.
- * Run: npx ts-node --compiler-options '{"module":"commonjs"}' src/model/Order.smoke.ts
- * Or after build: node -e "require('./dist/model/Order')"
- */
 import {
   canTransition,
   createOrder,
   transitionOrder,
+  canActorTransition,
 } from "./Order"
 
+const company = "npub1company"
+const customer = "npub1customer"
+const driver = "npub1driver"
+
 const order = createOrder({
-  companyNpub: "npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg3x5e0",
-  customerNpub: "npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg3x5e0",
-  items: [{ name: "Pizza", price: "10", qty: 1 }],
+  companyNpub: company,
+  customerNpub: customer,
+  items: [{ name: "Pizza", price: "0.0001", qty: 1 }],
   currency: "BTC",
-  total: "10",
+  total: "0.0001",
 })
 
-if (order.status !== "CREATED") {
-  throw new Error("expected CREATED")
+if (!canActorTransition(order, "PAID", customer)) {
+  throw new Error("customer should PAID")
 }
-if (!canTransition("CREATED", "PAID")) {
-  throw new Error("CREATED→PAID should be allowed")
+if (canActorTransition(order, "ACCEPTED", customer)) {
+  throw new Error("customer should not ACCEPTED")
 }
-if (canTransition("CREATED", "DELIVERED")) {
-  throw new Error("CREATED→DELIVERED should be blocked")
+if (canActorTransition(order, "PAID", company)) {
+  throw new Error("company should not PAID")
 }
 
-const paid = transitionOrder(order, "PAID")
-const accepted = transitionOrder(paid, "ACCEPTED")
-const ready = transitionOrder(accepted, "READY")
-const assigned = transitionOrder({ ...ready, driverNpub: order.companyNpub }, "ASSIGNED")
-const picked = transitionOrder(assigned, "PICKED_UP")
-const delivered = transitionOrder(picked, "DELIVERED")
-
-if (delivered.status !== "DELIVERED") {
-  throw new Error("expected DELIVERED")
+let x = transitionOrder(order, "PAID")
+if (!canActorTransition(x, "ACCEPTED", company)) {
+  throw new Error("company should ACCEPTED")
+}
+x = transitionOrder(x, "ACCEPTED")
+x = transitionOrder(x, "READY")
+x = { ...x, driverNpub: driver }
+x = transitionOrder(x, "ASSIGNED")
+if (!canActorTransition(x, "PICKED_UP", driver)) {
+  throw new Error("driver should PICKED_UP")
+}
+if (!canTransition("CREATED", "CANCELLED")) {
+  throw new Error("cancel allowed")
 }
 
 console.log("Order.smoke OK")

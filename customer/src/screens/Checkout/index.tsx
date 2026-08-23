@@ -15,6 +15,7 @@ import { getPublicKey, nip19 } from "nostr-tools"
 import {
   ActionButton,
   computeOrderTotal,
+  formatLightningAmountPreview,
   LightningService,
   NodeService,
   OrderService,
@@ -59,7 +60,16 @@ export const CheckoutScreen = ({ navigation }: any) => {
       const kind0 =
         typeof kind0Raw === "string" ? JSON.parse(kind0Raw) : kind0Raw
       const lud16 = kind0?.lud16 || ""
-      const currency = kind0?.currency || cart.currency || "BTC"
+      const currency = (kind0?.currency || cart.currency || "BTC").toUpperCase()
+
+      if (currency !== "BTC") {
+        Toast.show({
+          type: "error",
+          text1: "Company currency must be BTC for Lightning",
+          text2: "Ask the merchant to set currency to BTC on their profile",
+        })
+        return
+      }
 
       if (!lud16) {
         Toast.show({
@@ -149,6 +159,15 @@ export const CheckoutScreen = ({ navigation }: any) => {
   }
 
   const total = cart ? computeOrderTotal(cart.items) : order?.total
+  const currency = (cart?.currency || order?.currency || "BTC").toUpperCase()
+  let lightningLabel: string | null = null
+  try {
+    if (total && currency === "BTC") {
+      lightningLabel = formatLightningAmountPreview(String(total), "BTC").label
+    }
+  } catch {
+    lightningLabel = null
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -163,8 +182,15 @@ export const CheckoutScreen = ({ navigation }: any) => {
             placeholder="Street, number, city"
           />
           <Text style={styles.total}>
-            Total: {total} {cart?.currency || ""}
+            Total: {total} {currency}
           </Text>
+          {lightningLabel ? (
+            <Text style={styles.sats}>{lightningLabel}</Text>
+          ) : (
+            <Text style={styles.warn}>
+              Lightning requires BTC currency on the company profile.
+            </Text>
+          )}
           {busy ? (
             <ActivityIndicator color="#2f1650" />
           ) : (
@@ -172,6 +198,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
               title="Place order & get Lightning invoice"
               color="purple"
               onPress={placeOrder}
+              disabled={currency !== "BTC"}
             />
           )}
         </>
@@ -179,6 +206,9 @@ export const CheckoutScreen = ({ navigation }: any) => {
       {!!bolt11 && (
         <View style={styles.invoiceBox}>
           <Text style={styles.label}>Pay this invoice</Text>
+          {lightningLabel && (
+            <Text style={styles.sats}>{lightningLabel}</Text>
+          )}
           <View style={styles.qr}>
             <QRCode value={bolt11} size={200} />
           </View>
@@ -216,7 +246,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 12,
   },
-  total: { fontSize: 18, fontWeight: "bold", marginBottom: 16 },
+  total: { fontSize: 18, fontWeight: "bold", marginBottom: 8 },
+  sats: { fontSize: 14, color: "#2f1650", marginBottom: 12 },
+  warn: { color: "#a60", marginBottom: 12, fontSize: 13 },
   invoiceBox: { marginTop: 16, gap: 10, alignItems: "center" },
   qr: { padding: 12, backgroundColor: "#fff" },
   bolt11: { fontSize: 11, color: "#333", width: "100%" },

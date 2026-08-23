@@ -319,6 +319,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                     emptyMessage={"Select your currency"}
                     callback={handleUpdateCurrency}
                 />
+                <Text style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                    Lightning checkout requires BTC (menu prices interpreted as BTC amounts).
+                </Text>
             </View>
             <View>
                 <Text style={{ fontSize: 16 }}>Lightning Address (lud16)</Text>

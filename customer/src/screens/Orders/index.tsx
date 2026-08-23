@@ -11,6 +11,7 @@ import { useFocusEffect } from "@react-navigation/native"
 import Toast from "react-native-toast-message"
 import {
   ActionButton,
+  formatLightningAmountPreview,
   LightningService,
   Order,
   OrderService,
@@ -48,7 +49,16 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   useFocusEffect(
     useCallback(() => {
+      let unsub: (() => void) | undefined
       load()
+      orderService.watchOrders((list) => setOrders(list)).then((u) => {
+        unsub = u
+      })
+      return () => {
+        if (unsub) {
+          unsub()
+        }
+      }
     }, [load])
   )
 
@@ -93,6 +103,24 @@ export const OrdersScreen = ({ navigation }: any) => {
     }
   }
 
+  async function cancelOrder(order: Order) {
+    try {
+      await orderService.updateStatus(order, "CANCELLED")
+      Toast.show({ type: "success", text1: "Order cancelled" })
+      await load()
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: e?.message || "Cancel failed" })
+    }
+  }
+
+  function lightningPreview(order: Order): string | null {
+    try {
+      return formatLightningAmountPreview(order.total, order.currency).label
+    } catch {
+      return null
+    }
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -111,6 +139,9 @@ export const OrdersScreen = ({ navigation }: any) => {
           <Text>
             Total: {order.total} {order.currency}
           </Text>
+          {!!lightningPreview(order) && (
+            <Text style={styles.sats}>{lightningPreview(order)}</Text>
+          )}
           <Text numberOfLines={2}>
             {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
           </Text>
@@ -125,12 +156,22 @@ export const OrdersScreen = ({ navigation }: any) => {
               }
             />
           )}
+          {(order.status === "CREATED" || order.status === "PAID") && (
+            <ActionButton
+              title="Cancel"
+              color="red"
+              onPress={() => cancelOrder(order)}
+            />
+          )}
         </View>
       ))}
 
       {paying?.payment?.bolt11 && (
         <View style={styles.payBox}>
           <Text style={styles.title}>Pay order</Text>
+          {!!lightningPreview(paying) && (
+            <Text style={styles.sats}>{lightningPreview(paying)}</Text>
+          )}
           <QRCode value={paying.payment.bolt11} size={180} />
           <TouchableOpacity
             onPress={async () => {
@@ -160,6 +201,7 @@ const styles = StyleSheet.create({
   container: { margin: "3%", marginTop: "8%" },
   title: { fontSize: 22, fontWeight: "bold", marginBottom: 12 },
   empty: { color: "#666" },
+  sats: { fontSize: 13, color: "#2f1650" },
   card: {
     borderWidth: 1,
     borderColor: "#ddd",

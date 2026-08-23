@@ -5,23 +5,24 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TextInput,
 } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import Toast from "react-native-toast-message"
 import { getPublicKey, nip19 } from "nostr-tools"
 import {
   ActionButton,
+  AssociatedDriverRecord,
   Order,
   OrderService,
+  SelectInput,
   StorageService,
   StoredKey,
-  canTransition,
 } from "@odevlibertario/nostrlivery-common"
 
 export const OrdersScreen = ({ navigation }: any) => {
   const [orders, setOrders] = useState<Order[]>([])
   const [refreshing, setRefreshing] = useState(false)
+  const [drivers, setDrivers] = useState<AssociatedDriverRecord[]>([])
   const [driverNpubByOrder, setDriverNpubByOrder] = useState<
     Record<string, string>
   >({})
@@ -41,6 +42,8 @@ export const OrdersScreen = ({ navigation }: any) => {
       )
       const list = await orderService.queryOrdersForNpub(npub)
       setOrders(list)
+      const stored = await storageService.get(StoredKey.ASSOCIATED_DRIVERS)
+      setDrivers(Array.isArray(stored) ? stored : [])
     } catch (e) {
       console.log(e)
       Toast.show({ type: "error", text1: "Failed to load orders" })
@@ -51,27 +54,26 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   useFocusEffect(
     useCallback(() => {
+      let unsub: (() => void) | undefined
       load()
+      orderService.watchOrders((list) => setOrders(list)).then((u) => {
+        unsub = u
+      })
+      return () => {
+        if (unsub) {
+          unsub()
+        }
+      }
     }, [load])
   )
 
-  async function advance(order: Order, next: Order["status"], patch?: Partial<Order>) {
+  async function advance(
+    order: Order,
+    next: Order["status"],
+    patch?: Partial<Order>
+  ) {
     try {
-      if (!canTransition(order.status, next)) {
-        Toast.show({
-          type: "error",
-          text1: `Cannot go from ${order.status} to ${next}`,
-        })
-        return
-      }
-      if (next === "ACCEPTED" && order.status !== "PAID") {
-        Toast.show({ type: "error", text1: "Order must be PAID first" })
-        return
-      }
-      const updated = await orderService.updateStatus(order, next, patch)
-      if (next === "ASSIGNED") {
-        await orderService.notifyOrderUpdate(updated, "Order assigned to driver")
-      }
+      await orderService.updateStatus(order, next, patch)
       Toast.show({ type: "success", text1: `Order ${next}` })
       await load()
     } catch (e: any) {
@@ -79,54 +81,82 @@ export const OrdersScreen = ({ navigation }: any) => {
     }
   }
 
+  function cancelButton(order: Order) {
+    if (
+      !["PAID", "ACCEPTED", "READY", "ASSIGNED"].includes(order.status)
+    ) {
+      return null
+    }
+    return (
+      <ActionButton
+        title="Cancel order"
+        color="red"
+        onPress={() => advance(order, "CANCELLED")}
+      />
+    )
+  }
+
   function actionsFor(order: Order) {
     switch (order.status) {
       case "PAID":
         return (
-          <ActionButton
-            title="Accept"
-            color="purple"
-            onPress={() => advance(order, "ACCEPTED")}
-          />
+          <View style={{ gap: 8 }}>
+            <ActionButton
+              title="Accept"
+              color="purple"
+              onPress={() => advance(order, "ACCEPTED")}
+            />
+            {cancelButton(order)}
+          </View>
         )
       case "ACCEPTED":
         return (
-          <ActionButton
-            title="Mark ready"
-            color="purple"
-            onPress={() => advance(order, "READY")}
-          />
+          <View style={{ gap: 8 }}>
+            <ActionButton
+              title="Mark ready"
+              color="purple"
+              onPress={() => advance(order, "READY")}
+            />
+            {cancelButton(order)}
+          </View>
         )
       case "READY":
         return (
           <View style={{ gap: 8 }}>
-            <TextInput
-              style={styles.input}
-              autoCapitalize="none"
-              placeholder="Driver npub"
-              value={driverNpubByOrder[order.id] || ""}
-              onChangeText={(t) =>
-                setDriverNpubByOrder((m) => ({ ...m, [order.id]: t }))
-              }
-            />
+            {!drivers.length ? (
+              <Text style={styles.hint}>
+                No associated drivers. Accept a driver in the Drivers tab first.
+              </Text>
+            ) : (
+              <SelectInput
+                data={drivers.map((d) => ({
+                  label: `${d.name} (${d.npub.slice(0, 12)}…)`,
+                  value: d.npub,
+                }))}
+                emptyMessage="Select driver"
+                callback={(value) =>
+                  setDriverNpubByOrder((m) => ({ ...m, [order.id]: value }))
+                }
+              />
+            )}
             <ActionButton
               title="Assign driver"
               color="purple"
+              disabled={!drivers.length || !driverNpubByOrder[order.id]}
               onPress={() => {
-                const driverNpub = (driverNpubByOrder[order.id] || "").trim()
-                try {
-                  if (nip19.decode(driverNpub).type !== "npub") {
-                    throw new Error("bad")
-                  }
-                } catch {
-                  Toast.show({ type: "error", text1: "Invalid driver npub" })
+                const driverNpub = driverNpubByOrder[order.id]
+                if (!driverNpub) {
+                  Toast.show({ type: "error", text1: "Select a driver" })
                   return
                 }
                 advance(order, "ASSIGNED", { driverNpub })
               }}
             />
+            {cancelButton(order)}
           </View>
         )
+      case "ASSIGNED":
+        return cancelButton(order)
       default:
         return null
     }
@@ -152,7 +182,9 @@ export const OrdersScreen = ({ navigation }: any) => {
             {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
           </Text>
           {order.driverNpub && (
-            <Text style={styles.id}>Driver: {order.driverNpub.slice(0, 18)}…</Text>
+            <Text style={styles.id}>
+              Driver: {order.driverNpub.slice(0, 18)}…
+            </Text>
           )}
           {actionsFor(order)}
         </View>
@@ -165,6 +197,7 @@ const styles = StyleSheet.create({
   container: { margin: "3%", marginTop: "8%" },
   title: { fontSize: 22, fontWeight: "bold", marginBottom: 12 },
   empty: { color: "#666" },
+  hint: { color: "#a60", fontSize: 13 },
   card: {
     borderWidth: 1,
     borderColor: "#ddd",
@@ -175,10 +208,4 @@ const styles = StyleSheet.create({
   },
   status: { fontWeight: "bold", color: "#2f1650" },
   id: { fontSize: 11, color: "#888" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 8,
-  },
 })

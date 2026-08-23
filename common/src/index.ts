@@ -7,7 +7,7 @@ export {NodeService} from './service/NodeService'
 export {NostrService} from './service/NostrService'
 export {StorageService, StoredKey} from './service/StorageService'
 export {OrderService} from './service/OrderService'
-export {LightningService, totalToMsats} from './service/LightningService'
+export {LightningService, totalToMsats, msatsToSats, formatLightningAmountPreview} from './service/LightningService'
 export type {LightningInvoice, LnurlPayRequest} from './service/LightningService'
 
 export {NostrEvent} from './model/NostrEvent'
@@ -15,6 +15,9 @@ export {
   createOrder,
   transitionOrder,
   canTransition,
+  canActorTransition,
+  assertActorCanTransition,
+  resolveOrderActorRole,
   parseOrderContent,
   mergeOrdersById,
   computeOrderTotal,
@@ -27,6 +30,8 @@ export type {
   OrderItem,
   OrderPayment,
   CreateOrderInput,
+  OrderActorRole,
+  AssociatedDriverRecord,
 } from './model/Order'
 export {
   normalizeMenu,

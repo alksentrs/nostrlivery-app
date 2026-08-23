@@ -12,6 +12,7 @@ import {
   parseOrderContent,
   transitionOrder,
   OrderStatus,
+  assertActorCanTransition,
 } from "../model/Order"
 
 function npubToHex(npub: string): string {
@@ -30,6 +31,15 @@ export class OrderService {
   private nodeService = new NodeService()
   private storageService = new StorageService()
   private nostrService = new NostrService()
+
+  async getCurrentNpub(): Promise<string | null> {
+    const nsec = await this.storageService.get(StoredKey.NSEC)
+    if (!nsec) {
+      return null
+    }
+    const sk = nip19.decode(nsec)
+    return hexToNpub(getPublicKey(sk.data as Uint8Array))
+  }
 
   buildTags(order: Order): string[][] {
     const tags: string[][] = [
@@ -67,6 +77,12 @@ export class OrderService {
     next: OrderStatus,
     patch?: Partial<Order>
   ): Promise<Order> {
+    const actorNpub = await this.getCurrentNpub()
+    if (!actorNpub) {
+      throw new Error("Not logged in")
+    }
+    assertActorCanTransition(order, next, actorNpub)
+
     const transitioned = transitionOrder(order, next)
     const updated: Order = {
       ...transitioned,
@@ -74,7 +90,9 @@ export class OrderService {
       status: transitioned.status,
       updatedAt: Math.floor(Date.now() / 1000),
     }
-    return this.publishOrder(updated)
+    const published = await this.publishOrder(updated)
+    await this.notifyOrderUpdate(published, `Order ${next}`)
+    return published
   }
 
   private parseEvents(events: any[]): Order[] {
@@ -90,9 +108,9 @@ export class OrderService {
       } else {
         continue
       }
-      const order = parseOrderContent(content)
-      if (order) {
-        orders.push(order)
+      const parsed = parseOrderContent(content)
+      if (parsed) {
+        orders.push(parsed)
       }
     }
     return mergeOrdersById(orders)
@@ -110,13 +128,11 @@ export class OrderService {
   }
 
   async queryOrdersForCurrentUser(): Promise<Order[]> {
-    const nsec = await this.storageService.get(StoredKey.NSEC)
-    if (!nsec) {
+    const npub = await this.getCurrentNpub()
+    if (!npub) {
       return []
     }
-    const sk = nip19.decode(nsec)
-    const pubkey = getPublicKey(sk.data as Uint8Array)
-    return this.queryOrdersForNpub(hexToNpub(pubkey))
+    return this.queryOrdersForNpub(npub)
   }
 
   async notifyOrderUpdate(order: Order, message: string): Promise<void> {
@@ -131,10 +147,64 @@ export class OrderService {
       message,
       order,
     })
-    await this.nostrService.publishEphemeralEvent(
-      NostrEventKinds.EPHEMERAL,
-      payload,
-      nsec
-    )
+    try {
+      await this.nostrService.publishEphemeralEvent(
+        NostrEventKinds.EPHEMERAL,
+        payload,
+        nsec
+      )
+    } catch (e) {
+      console.log("notifyOrderUpdate failed", e)
+    }
+  }
+
+  /**
+   * Watch for ORDER_UPDATE + poll every pollMs while active.
+   * Returns unsubscribe that stops both.
+   */
+  async watchOrders(
+    onUpdate: (orders: Order[]) => void,
+    pollMs: number = 15000
+  ): Promise<() => void> {
+    let stopped = false
+
+    const refresh = async () => {
+      if (stopped) {
+        return
+      }
+      try {
+        const orders = await this.queryOrdersForCurrentUser()
+        if (!stopped) {
+          onUpdate(orders)
+        }
+      } catch (e) {
+        console.log("watchOrders refresh failed", e)
+      }
+    }
+
+    await refresh()
+
+    let unsubEphemeral: (() => void) | null = null
+    try {
+      unsubEphemeral = await this.nostrService.subscribeToOrderNotifications(
+        () => {
+          refresh()
+        }
+      )
+    } catch (e) {
+      console.log("ORDER_UPDATE subscribe failed; polling only", e)
+    }
+
+    const interval = setInterval(() => {
+      refresh()
+    }, pollMs)
+
+    return () => {
+      stopped = true
+      clearInterval(interval)
+      if (unsubEphemeral) {
+        unsubEphemeral()
+      }
+    }
   }
 }

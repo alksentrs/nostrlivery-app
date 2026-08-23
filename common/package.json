@@ -1,10 +1,10 @@
 {
   "name": "@odevlibertario/nostrlivery-common",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "pack": "npm run build && npm pack && cd .. && cd company && npm install ../common/odevlibertario-nostrlivery-common-1.0.0.tgz && cd .. && cd driver && npm install ../common/odevlibertario-nostrlivery-common-1.0.0.tgz",
+    "pack": "npm run build && npm pack && TGZ=odevlibertario-nostrlivery-common-$(node -p \"require('./package.json').version\").tgz && cd ../company && npm i --legacy-peer-deps ../common/$TGZ && cd ../driver && npm i --legacy-peer-deps ../common/$TGZ && cd ../customer && npm i --legacy-peer-deps ../common/$TGZ",
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",

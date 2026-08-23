@@ -265,6 +265,33 @@ export class NostrService {
         }
     }
 
+    /**
+     * Subscribe to ephemeral events and invoke callback when content.type === ORDER_UPDATE.
+     */
+    async subscribeToOrderNotifications(
+        onNotify: (payload: {
+            type: string
+            orderId: string
+            status: string
+            message?: string
+            order?: any
+        }) => void
+    ): Promise<() => void> {
+        return this.subscribeToEphemeralEvents((event) => {
+            try {
+                const raw =
+                    typeof event.content === "string"
+                        ? JSON.parse(event.content)
+                        : event.content
+                if (raw?.type === "ORDER_UPDATE") {
+                    onNotify(raw)
+                }
+            } catch {
+                /* ignore non-JSON / non-order events */
+            }
+        })
+    }
+
     async closeRelayConnection(): Promise<void> {
         if (this.relay) {
             try {

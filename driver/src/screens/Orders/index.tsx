@@ -8,14 +8,12 @@ import {
 } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import Toast from "react-native-toast-message"
-import { getPublicKey, nip19 } from "nostr-tools"
 import {
   ActionButton,
   Order,
   OrderService,
   StorageService,
   StoredKey,
-  canTransition,
 } from "@odevlibertario/nostrlivery-common"
 
 export const OrdersScreen = ({ navigation }: any) => {
@@ -23,6 +21,14 @@ export const OrdersScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false)
   const orderService = new OrderService()
   const storageService = new StorageService()
+
+  const applyList = (list: Order[]) => {
+    setOrders(
+      list.filter((o) =>
+        ["ASSIGNED", "PICKED_UP", "DELIVERED"].includes(o.status)
+      )
+    )
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true)
@@ -32,15 +38,8 @@ export const OrdersScreen = ({ navigation }: any) => {
         navigation.navigate("Login")
         return
       }
-      const npub = nip19.npubEncode(
-        getPublicKey(nip19.decode(nsec).data as unknown as Uint8Array)
-      )
-      const list = await orderService.queryOrdersForNpub(npub)
-      setOrders(
-        list.filter((o) =>
-          ["ASSIGNED", "PICKED_UP", "DELIVERED"].includes(o.status)
-        )
-      )
+      const list = await orderService.queryOrdersForCurrentUser()
+      applyList(list)
     } catch (e) {
       console.log(e)
       Toast.show({ type: "error", text1: "Failed to load jobs" })
@@ -51,21 +50,22 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   useFocusEffect(
     useCallback(() => {
+      let unsub: (() => void) | undefined
       load()
+      orderService.watchOrders((list) => applyList(list)).then((u) => {
+        unsub = u
+      })
+      return () => {
+        if (unsub) {
+          unsub()
+        }
+      }
     }, [load])
   )
 
   async function advance(order: Order, next: Order["status"]) {
     try {
-      if (!canTransition(order.status, next)) {
-        Toast.show({
-          type: "error",
-          text1: `Cannot go from ${order.status} to ${next}`,
-        })
-        return
-      }
-      const updated = await orderService.updateStatus(order, next)
-      await orderService.notifyOrderUpdate(updated, `Order ${next}`)
+      await orderService.updateStatus(order, next)
       Toast.show({ type: "success", text1: `Order ${next}` })
       await load()
     } catch (e: any) {

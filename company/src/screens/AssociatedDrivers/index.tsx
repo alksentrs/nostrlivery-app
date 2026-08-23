@@ -10,15 +10,8 @@ import {
 import { TextInput, Button, Card, Title, Paragraph } from "react-native-paper"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import { useFocusEffect } from "@react-navigation/native"
-import { NostrService, StorageService, StoredKey } from "@odevlibertario/nostrlivery-common"
+import { NostrService, StorageService, StoredKey, AssociatedDriverRecord } from "@odevlibertario/nostrlivery-common"
 import { QRScanner } from "../../components/QRScanner"
-
-interface AssociatedDriver {
-    id: string
-    name: string
-    npub: string
-    profilePicture?: string
-}
 
 interface DriverRequest {
     id: string
@@ -32,7 +25,7 @@ interface DriverRequest {
 export const AssociatedDriversScreen = ({ navigation }: any) => {
     const [driverNpub, setDriverNpub] = useState("")
     const [isLoading, setIsLoading] = useState(false)
-    const [associatedDrivers] = useState<AssociatedDriver[]>([]) // Always empty for now
+    const [associatedDrivers, setAssociatedDrivers] = useState<AssociatedDriverRecord[]>([])
     const [showQRScanner, setShowQRScanner] = useState(false)
     const [driverResponses, setDriverResponses] = useState<any[]>([])
     const [driverRequests, setDriverRequests] = useState<DriverRequest[]>([])
@@ -42,6 +35,22 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
 
     const nostrService = new NostrService()
     const storageService = new StorageService()
+
+    const persistDrivers = async (list: AssociatedDriverRecord[]) => {
+        setAssociatedDrivers(list)
+        await storageService.set(StoredKey.ASSOCIATED_DRIVERS, list)
+    }
+
+    const addAssociatedDriver = async (npub: string, name: string) => {
+        const existing = await storageService.get(StoredKey.ASSOCIATED_DRIVERS)
+        const list: AssociatedDriverRecord[] = Array.isArray(existing) ? [...existing] : []
+        if (!list.some((d) => d.npub === npub)) {
+            list.push({ npub, name: name || "Driver" })
+            await persistDrivers(list)
+        } else {
+            setAssociatedDrivers(list)
+        }
+    }
 
     // Function to add a new driver request
     const addDriverRequest = (driverNpub: string, driverName: string, requestId: string) => {
@@ -66,6 +75,16 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
             )
         )
     }
+
+    useFocusEffect(
+        React.useCallback(() => {
+            storageService.get(StoredKey.ASSOCIATED_DRIVERS).then((data) => {
+                if (Array.isArray(data)) {
+                    setAssociatedDrivers(data)
+                }
+            })
+        }, [])
+    )
 
     useEffect(() => {
         console.log("🔄 Company useEffect called - isListening:", isListening, "unsubscribeFunction:", !!unsubscribeFunction)
@@ -143,6 +162,14 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
                             // Update request status
                             const status = content.type === "DRIVER_ASSOCIATION_ACCEPTED" ? 'Accepted' : 'Rejected'
                             updateRequestStatus(content.driverNpub, status)
+
+                            if (content.type === "DRIVER_ASSOCIATION_ACCEPTED") {
+                                const name =
+                                    content.driverName ||
+                                    driverRequests.find((r) => r.driverNpub === content.driverNpub)?.driverName ||
+                                    "Driver"
+                                addAssociatedDriver(content.driverNpub, name)
+                            }
                             
                             // Show alert to user
                             const message = content.type === "DRIVER_ASSOCIATION_ACCEPTED" 
@@ -274,7 +301,7 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
         }
     }
 
-    const renderDriverItem = ({ item }: { item: AssociatedDriver }) => (
+    const renderDriverItem = ({ item }: { item: AssociatedDriverRecord }) => (
         <Card style={styles.driverCard}>
             <Card.Content>
                 <Title>{item.name}</Title>
@@ -367,7 +394,7 @@ export const AssociatedDriversScreen = ({ navigation }: any) => {
                 <FlatList
                     data={associatedDrivers}
                     renderItem={renderDriverItem}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.npub}
                     ListEmptyComponent={renderEmptyList}
                     style={styles.driversList}
                 />

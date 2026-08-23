@@ -8,6 +8,7 @@ export enum StoredKey {
     NODE_URL = "nodeUrl",
     MENU = "menu",
     CART = "cart",
+    ASSOCIATED_DRIVERS = "associatedDrivers",
 }
 
 export class StorageService {
